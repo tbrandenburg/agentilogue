@@ -155,27 +155,6 @@ export function SessionControls({
               >
                 Choose folder… · Not implemented
               </button>
-              {hasMessages && (
-                <button
-                  type="button"
-                  className="w-full px-2.5 py-2 text-left text-sm hover:bg-accent"
-                  onClick={onNewSession}
-                >
-                  Start a new session
-                </button>
-              )}
-              {hasMessages && (
-                <Popover.Close
-                  render={
-                    <button
-                      type="button"
-                      className="w-full px-2.5 py-2 text-left text-sm hover:bg-accent"
-                    />
-                  }
-                >
-                  Cancel
-                </Popover.Close>
-              )}
             </Popover.Popup>
           </Popover.Positioner>
         </Popover.Portal>
