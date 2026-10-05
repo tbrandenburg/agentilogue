@@ -17,6 +17,7 @@ The project starts from the assistant-ui minimal template. The existing AI SDK +
 - Prefer existing assistant-ui primitives over custom replacements.
 - Do not remove or complicate the working AI SDK path to add agent integrations.
 - Add abstractions only when a real second implementation needs them.
+- Treat opencode as the first proof, not the only target. Planned agent CLI targets include opencode, pi, codex, claude code, and github copilot; SDK-backed integrations may follow where useful.
 - Keep agent/provider domain types independent from assistant-ui and transport-specific types.
 - Keep UI concerns in the UI/runtime layer and agent execution concerns behind backend/provider boundaries.
 - Prefer standard protocols such as ACP or A2A when they fit, but preserve richer native integrations when they add value.
@@ -70,7 +71,8 @@ For the first provider, the route should call the provider directly. Add a small
 2. Reuse existing libraries before adding custom code.
 3. Draft the smallest provider-neutral contracts.
 4. Validate them with one deep opencode integration.
-5. Add a second provider before generalizing provider selection.
-6. Only then extract patterns for ACP, A2A, LangGraph, Eve, or other runtimes.
+5. Challenge the resulting contract against pi, codex, claude code, and github copilot before treating it as stable.
+6. Add SDK-backed implementations later where they provide meaningful benefits.
+7. Only then extract patterns for ACP, A2A, LangGraph, Eve, or other runtimes.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the current architecture notes.
