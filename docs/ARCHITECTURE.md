@@ -136,7 +136,7 @@ With only opencode, the route can instantiate or resolve it directly:
 
 ```mermaid
 flowchart LR
-    API["/api/agent"] --> OC["OpenCodeProvider"] --> O["opencode"]
+    API["/api/agent"] --> OC["OpencodeProvider"] --> O["opencode"]
 ```
 
 No service or registry is needed.
@@ -149,7 +149,7 @@ When a second provider actually exists, add the smallest useful selection mechan
 function createAgentProvider(config: AgentConfig): AgentProvider {
   switch (config.type) {
     case "opencode":
-      return new OpenCodeProvider(config);
+      return new OpencodeProvider(config);
     case "acp":
       return new AcpProvider(config);
   }
@@ -159,7 +159,7 @@ function createAgentProvider(config: AgentConfig): AgentProvider {
 ```mermaid
 flowchart LR
     API["/api/agent"] --> F["createAgentProvider(config)"]
-    F --> OC["OpenCodeProvider"]
+    F --> OC["OpencodeProvider"]
     F --> ACP["ACPProvider"]
 ```
 
@@ -219,7 +219,7 @@ A successful first implementation should prove this path:
 flowchart LR
     UI["assistant-ui"] <--> RT["ExternalStoreRuntime<br/>+ AssistantTransport"]
     RT <--> API["/api/agent"]
-    API --> OP["OpenCodeProvider"]
+    API --> OP["OpencodeProvider"]
     OP --> OC["opencode"]
 ```
 
