@@ -126,6 +126,55 @@ A provider may represent:
 
 The physical location of the agent should not matter to the UI.
 
+## Target agent integrations
+
+The provider abstraction is intended for more than opencode.
+
+The first integration wave should focus on agent CLIs:
+
+- opencode
+- pi
+- codex
+- claude code
+- github copilot
+
+Later, where an SDK gives us a cleaner or richer integration, support SDK-backed implementations as well:
+
+- opencode SDK
+- pi SDK
+- claude code SDK
+
+CLI versus SDK should normally be an implementation detail behind the same provider-facing contract, not a reason to create a second architecture. Only split them into separate provider types if their behavior or capabilities differ enough to matter to callers.
+
+opencode remains the first deep proof because one real implementation should shape the contract before we generalize it to the other agents.
+
+## Capability model
+
+Different agent CLIs and SDKs expose different features. The provider contract should therefore support capability discovery, but we should add capability fields only when agentilogue actually needs to branch on them.
+
+Archon's current `ProviderCapabilities` is a useful reference map. It covers areas such as:
+
+- session resume and session fork
+- MCP
+- hooks and skills
+- subagents
+- tool restrictions and known tool names
+- structured output
+- environment injection
+- cost control and usage/cost reporting
+- reasoning/effort control and fallback models
+- sandbox/container execution
+- native in-process tools
+- provider-specific settings
+
+This is inspiration, not a contract to copy. Archon serves workflow execution and therefore needs capabilities that agentilogue may never need.
+
+Our initial `AgentCapabilities` should contain only capabilities required by the UI or transport. Likely early candidates are session resume, tool calls, approvals, attachments/files, reasoning visibility, and subagent visibility. Add further flags only when a real provider difference requires them.
+
+The rule is:
+
+> capability flags describe meaningful behavioral differences; they are not an inventory of everything an SDK can do.
+
 ## Provider selection: grow only when needed
 
 One chat session talks to one configured agent at a time. That lets the initial backend remain extremely small.
@@ -199,7 +248,7 @@ Provider selection should start as direct construction and become a small factor
 
 ## First proof: opencode
 
-The first deeper custom-agent integration should be opencode.
+The first deeper custom-agent integration should be opencode. It is the first proof for a broader CLI target set that includes pi, codex, claude code, and github copilot.
 
 Use it to validate the smallest useful contracts for:
 
@@ -245,13 +294,13 @@ Study how framework-specific state, tool calls, approvals, attachments, and acti
 
 [opencode](https://github.com/anomalyco/opencode) is the first native agent integration we want to study deeply.
 
-It should drive the first real version of the AgentProvider contract, especially around sessions, tool execution, permissions, files, streaming, and subagents.
+It should drive the first real version of the AgentProvider contract, especially around sessions, tool execution, permissions, files, streaming, and subagents. The resulting contract should then be challenged against pi, codex, claude code, and github copilot before it is treated as stable.
 
 ### Archon
 
 [Archon](https://github.com/coleam00/Archon) is useful for its provider abstraction and capability-oriented thinking.
 
-Take inspiration from the idea of hiding concrete agent implementations behind a common provider contract, but avoid inheriting Archon-specific workflow, coding-agent, or orchestration concerns unless agentilogue actually needs them.
+Take inspiration from the idea of hiding concrete agent implementations behind a common provider contract and from Archon's capability map across Claude, Codex, Copilot, Pi, and opencode. Avoid inheriting Archon-specific workflow, coding-agent, or orchestration concerns unless agentilogue actually needs them.
 
 ### Open WebUI
 
