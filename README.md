@@ -18,7 +18,7 @@ The UI and runtime are built on assistant-ui, so the existing model-chat path st
 
 The chat screen supports in-memory session tabs with independent assistant-ui runtime transcripts. Integration is session-scoped, while Agent and Model remain optional overrides. Project currently displays the server working-directory basename and is not editable: `/api/chat` ignores project configuration and executes from the server working directory. No folder picker or project override is implied. Only AI SDK · OpenAI is implemented; other integrations remain visible as unavailable. A selected named model is intentionally blocked until the chat route supports model overrides.
 
-The model picker uses a small checked-in recommendation catalog. Check upstream freshness with `bun run models:check`; after reviewing drift, update model IDs with `bun run models:sync` and review tier recommendations in `data/models.json`.
+The model picker uses a small checked-in recommendation catalog derived from models.dev provider-independent model metadata and canonical lab IDs, not provider-hosted catalogs. Check freshness with `bun run models:check`; after reviewing drift, update model IDs with `bun run models:sync` and review tier recommendations in `data/models.json`.
 
 ## Quick start
 

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import catalog from "../data/models.json";
+import { getUpstreamModels } from "../scripts/models";
 
 const labs = [
   "openai",
@@ -9,8 +10,8 @@ const labs = [
   "xai",
   "deepseek",
   "moonshotai",
-  "qwen",
-  "z-ai",
+  "alibaba",
+  "zhipuai",
   "minimax",
   "mistral",
   "cohere",
@@ -38,5 +39,27 @@ describe("checked-in model suggestions", () => {
         assert.ok(catalog[lab].models.includes(model));
       }
     }
+  });
+
+  it("attributes model IDs by canonical creator namespace, not serving provider", () => {
+    const modelCatalog = {
+      "alibaba/qwen-max": {},
+      "deepseek/deepseek-v4-flash": {},
+      "moonshotai/kimi-k3": {},
+      "zhipuai/glm-5.2": {},
+    };
+
+    assert.deepEqual(getUpstreamModels(modelCatalog, "alibaba"), ["qwen-max"]);
+    assert.deepEqual(getUpstreamModels(modelCatalog, "deepseek"), ["deepseek-v4-flash"]);
+    assert.deepEqual(getUpstreamModels(modelCatalog, "moonshotai"), ["kimi-k3"]);
+    assert.deepEqual(getUpstreamModels(modelCatalog, "zhipuai"), ["glm-5.2"]);
+  });
+
+  it("rejects a provider catalog instead of treating its hosted models as creator entries", () => {
+    const providerCatalog = {
+      alibaba: { models: { "qwen-max": {}, "deepseek-v4-flash": {}, "glm-5.2": {} } },
+    };
+
+    assert.throws(() => getUpstreamModels(providerCatalog, "alibaba"), /missing tracked lab/);
   });
 });

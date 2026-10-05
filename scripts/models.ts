@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 
 const catalogPath = new URL("../data/models.json", import.meta.url);
-const catalogUrl = "https://models.dev/api.json";
+const catalogUrl = "https://models.dev/models.json";
 const labs = [
   "openai",
   "anthropic",
@@ -9,8 +9,8 @@ const labs = [
   "xai",
   "deepseek",
   "moonshotai",
-  "qwen",
-  "z-ai",
+  "alibaba",
+  "zhipuai",
   "minimax",
   "mistral",
   "cohere",
@@ -69,26 +69,14 @@ async function readLocal(): Promise<Catalog> {
   return data as Catalog;
 }
 
-function getUpstreamModels(upstream: Record<string, unknown>, lab: Lab): string[] {
-  const upstreamName: Record<Lab, string> = {
-    openai: "openai",
-    anthropic: "anthropic",
-    google: "google",
-    xai: "xai",
-    deepseek: "deepseek",
-    moonshotai: "moonshotai",
-    qwen: "alibaba",
-    "z-ai": "zai",
-    minimax: "minimax",
-    mistral: "mistral",
-    cohere: "cohere",
-  };
-  const source = upstream[upstreamName[lab]];
-  if (!isObject(source) || !isObject(source.models))
-    fail(`models.dev is missing tracked lab "${lab}".`);
-  const ids = Object.entries(source.models).flatMap(([id, model]) => (isObject(model) ? [id] : []));
-  if (ids.length === 0) fail(`models.dev returned no model IDs for ${lab}.`);
-  return [...new Set(ids)].sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
+export function getUpstreamModels(upstream: Record<string, unknown>, lab: Lab): string[] {
+  const prefix = `${lab}/`;
+  const ids = Object.entries(upstream).flatMap(([canonicalId, model]) => {
+    if (!canonicalId.startsWith(prefix) || !isObject(model)) return [];
+    return [canonicalId.slice(prefix.length)];
+  });
+  if (ids.length === 0) throw new Error(`models.dev is missing tracked lab "${lab}".`);
+  return ids.sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
 }
 
 async function run() {
@@ -131,6 +119,10 @@ async function run() {
   console.info("Model catalog matches models.dev.");
 }
 
-run().catch((error: unknown) =>
-  fail(`Model catalog operation failed: ${error instanceof Error ? error.message : String(error)}`),
-);
+if (import.meta.main) {
+  run().catch((error: unknown) =>
+    fail(
+      `Model catalog operation failed: ${error instanceof Error ? error.message : String(error)}`,
+    ),
+  );
+}

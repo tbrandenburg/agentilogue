@@ -17,14 +17,15 @@ type IntegrationId =
 type Config = {
   projectName: string;
   integration: IntegrationId | null;
+  integrationAutoSelected: boolean;
   agent?: string;
   model?: string;
-  hasMessages: boolean;
 };
 type Props = {
   config: Config;
+  hasMessages: boolean;
   hasOpenAIKey: boolean;
-  reason: string;
+  sendDisabledReason: string;
   onChange: (patch: Partial<Config>) => void;
   onNewSession: () => void;
 };
@@ -108,10 +109,20 @@ function Option({
   );
 }
 
-export function SessionControls({ config, hasOpenAIKey, reason, onChange, onNewSession }: Props) {
+export function SessionControls({
+  config,
+  hasMessages,
+  hasOpenAIKey,
+  sendDisabledReason,
+  onChange,
+  onNewSession,
+}: Props) {
   const [lockedNotice, setLockedNotice] = useState(false);
   const ready = config.integration === "openai:vercel-ai" && hasOpenAIKey;
   const supported = config.integration === "openai:vercel-ai";
+  const agentDisabledReason = supported
+    ? "AI SDK · OpenAI does not expose named agents."
+    : "Agent selection is not available for this choice yet.";
   const suggested = models.openai.tiers;
   const modelOptions = Object.entries(suggested).filter(
     (entry): entry is [string, string] => typeof entry[1] === "string",
@@ -134,9 +145,8 @@ export function SessionControls({ config, hasOpenAIKey, reason, onChange, onNewS
                 {config.projectName}
               </Popover.Title>
               <Popover.Description className="px-2.5 pb-2 text-xs text-muted-foreground">
-                {config.hasMessages
-                  ? "Project is fixed for this session."
-                  : "This is the server working directory used by /api/chat. Changing it is not supported yet."}
+                This is the server working directory. Changing the project folder is not
+                implemented.
               </Popover.Description>
               <button
                 type="button"
@@ -145,7 +155,7 @@ export function SessionControls({ config, hasOpenAIKey, reason, onChange, onNewS
               >
                 Choose folder… · Not implemented
               </button>
-              {config.hasMessages && (
+              {hasMessages && (
                 <button
                   type="button"
                   className="w-full px-2.5 py-2 text-left text-sm hover:bg-accent"
@@ -154,7 +164,7 @@ export function SessionControls({ config, hasOpenAIKey, reason, onChange, onNewS
                   Start a new session
                 </button>
               )}
-              {config.hasMessages && (
+              {hasMessages && (
                 <Popover.Close
                   render={
                     <button
@@ -179,11 +189,14 @@ export function SessionControls({ config, hasOpenAIKey, reason, onChange, onNewS
             : (integrations.find((integration) => integration.id === value)?.label ?? value)
         }
         onValueChange={(value) => {
-          if (config.hasMessages) {
+          if (hasMessages) {
             setLockedNotice(true);
             return;
           }
-          onChange({ integration: value === "none" ? null : (value as IntegrationId) });
+          onChange({
+            integration: value === "none" ? null : (value as IntegrationId),
+            integrationAutoSelected: false,
+          });
         }}
       >
         <Option value="none">
@@ -207,7 +220,7 @@ export function SessionControls({ config, hasOpenAIKey, reason, onChange, onNewS
         value={config.agent ?? "default"}
         formatValue={(value) => (value === "default" ? "Default" : value)}
         disabled
-        disabledReason="Named agents are unavailable on OpenAI."
+        disabledReason={agentDisabledReason}
         onValueChange={(value) => onChange({ agent: value === "default" ? undefined : value })}
       >
         <Option value="default">Default · no override</Option>
@@ -230,18 +243,22 @@ export function SessionControls({ config, hasOpenAIKey, reason, onChange, onNewS
           </Option>
         ))}
       </Picker>
-      {config.integration === "openai:vercel-ai" && hasOpenAIKey && !config.hasMessages && (
-        <span className="px-1 text-[11px] text-muted-foreground">
-          Auto-selected from OPENAI_API_KEY
-        </span>
-      )}
-      {config.integration === "openai:vercel-ai" && (
+      {config.integration === "openai:vercel-ai" &&
+        config.integrationAutoSelected &&
+        hasOpenAIKey && (
+          <span className="px-1 text-[11px] text-muted-foreground">
+            Auto-selected from OPENAI_API_KEY
+          </span>
+        )}
+      {supported && (
         <span className="basis-full px-1 text-xs text-muted-foreground">
           Named agents are unavailable on OpenAI.
         </span>
       )}
       {!supported && (
-        <span className="basis-full px-1 text-xs text-muted-foreground">{reason}</span>
+        <span className="basis-full px-1 text-xs text-muted-foreground">
+          {agentDisabledReason} {sendDisabledReason}
+        </span>
       )}
       {supported && !ready && (
         <span className="basis-full px-1 text-xs text-muted-foreground">
@@ -253,12 +270,12 @@ export function SessionControls({ config, hasOpenAIKey, reason, onChange, onNewS
           Model override is not wired yet.
         </span>
       )}
-      {config.hasMessages && (
+      {hasMessages && (
         <span className="basis-full px-1 text-xs text-muted-foreground">
-          Project and Integration are fixed for this session.
+          Integration is fixed for this session. Project remains the server working directory.
         </span>
       )}
-      {config.hasMessages && (
+      {hasMessages && (
         <button
           type="button"
           className="px-1 text-xs underline underline-offset-2"
