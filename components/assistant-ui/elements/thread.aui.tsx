@@ -149,7 +149,12 @@ export const Thread: FC<{
 
           <div data-slot="aui_message-group" className="mb-14 flex flex-col gap-y-6 empty:hidden">
             <ThreadPrimitive.Messages>
-              {() => <ThreadMessage canSend={integrationReady && !config.model} />}
+              {() => (
+                <ThreadMessage
+                  canSend={integrationReady && !config.model}
+                  sendReason={sendReason}
+                />
+              )}
             </ThreadPrimitive.Messages>
           </div>
 
@@ -182,13 +187,13 @@ export const Thread: FC<{
   );
 };
 
-const ThreadMessage: FC<{ canSend: boolean }> = ({ canSend }) => {
+const ThreadMessage: FC<{ canSend: boolean; sendReason: string }> = ({ canSend, sendReason }) => {
   const role = useAuiState((s) => s.message.role);
   const isEditing = useAuiState((s) => s.message.composer.isEditing);
 
   if (isEditing) return <EditComposer canSend={canSend} />;
   if (role === "user") return <UserMessage />;
-  return <AssistantMessage />;
+  return <AssistantMessage canSend={canSend} sendReason={sendReason} />;
 };
 
 const ThreadScrollToBottom: FC = () => {
@@ -408,7 +413,10 @@ const MessageError: FC = () => {
   );
 };
 
-const AssistantMessage: FC = () => {
+const AssistantMessage: FC<{ canSend: boolean; sendReason: string }> = ({
+  canSend,
+  sendReason,
+}) => {
   const ACTION_BAR_PT = "pt-1.5";
   const ACTION_BAR_HEIGHT = `min-h-7.5 ${ACTION_BAR_PT}`;
 
@@ -448,13 +456,16 @@ const AssistantMessage: FC = () => {
         className={cn("ms-2 flex items-center", ACTION_BAR_HEIGHT)}
       >
         <BranchPicker />
-        <AssistantActionBar />
+        <AssistantActionBar canSend={canSend} sendReason={sendReason} />
       </div>
     </MessagePrimitive.Root>
   );
 };
 
-const AssistantActionBar: FC = () => {
+const AssistantActionBar: FC<{ canSend: boolean; sendReason: string }> = ({
+  canSend,
+  sendReason,
+}) => {
   return (
     <ActionBarPrimitive.Root
       hideWhenRunning
@@ -472,7 +483,11 @@ const AssistantActionBar: FC = () => {
         </TooltipIconButton>
       </ActionBarPrimitive.Copy>
       <ActionBarPrimitive.Reload asChild>
-        <TooltipIconButton tooltip="Refresh">
+        <TooltipIconButton
+          tooltip={canSend ? "Refresh" : `Regeneration unavailable: ${sendReason}`}
+          disabled={!canSend}
+          aria-label={canSend ? "Regenerate response" : `Regeneration unavailable: ${sendReason}`}
+        >
           <RefreshCwIcon />
         </TooltipIconButton>
       </ActionBarPrimitive.Reload>
