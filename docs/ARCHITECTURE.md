@@ -24,40 +24,93 @@ OpenAI
 
 This path is useful and should remain supported. It is the simplest way to use agentilogue with an AI SDK model.
 
-## Direction
+## Runtime architecture
 
-agentilogue should also support richer agents without replacing the existing path:
+assistant-ui gives us one UI surface while allowing different runtime integrations underneath it.
+
+The existing AI SDK path remains a first-class lane. Richer agents can use a second lane based on assistant-ui's external-store runtime model and a backend agent abstraction.
 
 ```text
-                         assistant-ui
-                              |
-                    AssistantRuntime boundary
-                      /                 \
-                     /                   \
-             AI SDK lane             agent lane
-                 |                       |
-          /api/chat              AssistantTransport
-                 |                       |
-            streamText                /api/agent
-                 |                       |
-          model/provider             AgentService
-                                         |
-                                   AgentProvider
-                                  /      |       \
-                             OpenCode   ACP/A2A   other
+assistant-ui components
+        |
+        v
+   AssistantRuntime
+        |
+   +----+---------------------+
+   |                          |
+AI SDK lane               agent lane
+   |                          |
+useChatRuntime()          AssistantTransport
+   |                          |
+AI SDK useChat()          ExternalStoreRuntime
+   |                          |
+/api/chat                /api/agent
+   |                          |
+streamText()              AgentService
+   |                          |
+OpenAI / AI SDK           AgentProvider
+                          |- OpenCode
+                          |- ACP
+                          |- A2A
+                          '- LangGraph / others
 ```
 
-The exact implementation may evolve. The important boundary is that assistant-ui owns the chat experience while agent-specific execution stays outside the UI.
+This diagram is conceptual rather than a strict call stack. In the agent lane, AssistantTransport is the frontend/backend protocol mechanism and feeds an ExternalStoreRuntime-backed assistant runtime. The backend stays responsible for agent execution and provider selection.
 
-## Principles
+The important boundaries are:
 
-### Keep the simple path simple
+- **assistant-ui components** render the conversation and interact with an `AssistantRuntime`.
+- **ExternalStoreRuntime** adapts externally owned conversation/agent state into assistant-ui.
+- **AssistantTransport** is one way to move commands and streamed state between that runtime and a remote backend.
+- **AgentService** handles backend-level routing and coordination.
+- **AgentProvider** isolates concrete agent runtimes and protocols from the UI.
 
-A user who only wants the AI SDK path should not need the agent-provider layer.
+## Direct framework adapters
 
-### Keep agent contracts UI-independent
+assistant-ui already demonstrates another useful pattern: framework-specific adapters can map directly into ExternalStoreRuntime.
 
-Agent/provider contracts should use agentilogue domain types rather than assistant-ui types. Translation belongs at the runtime or transport boundary.
+```text
+LangGraph ---+
+LangChain ---|
+Eve ---------|
+A2A ---------|
+AG-UI -------|
+OpenCode ----+
+             |
+             v
+   ExternalStoreRuntime
+             |
+             v
+      assistant-ui
+```
+
+These integrations are important references because they show how framework-specific messages, state, tool calls, approvals, attachments, and actions can be projected into a common UI runtime.
+
+agentilogue does not need to force those direct integrations through `AgentProvider`. For a dedicated integration, a direct runtime adapter can be the simplest solution.
+
+For agentilogue's provider-neutral backend path, however, the intended shape is:
+
+```text
+assistant-ui
+    |
+AssistantTransport
+    |
+HTTP / SSE
+    |
+/api/agent
+    |
+AgentService
+    |
+AgentProvider
+    |
+agent runtime or protocol
+```
+
+Both paths should remain possible.
+
+## Backend boundary
+
+The backend should expose the smallest useful contract between the UI transport and concrete agents.
 
 A future provider contract may be as small as:
 
@@ -71,7 +124,29 @@ interface AgentProvider {
 }
 ```
 
-This is a direction, not an API commitment. Define only what real integrations require.
+This is a direction, not an API commitment. OpenCode should help determine what the real minimum contract needs to be.
+
+The provider layer should not depend on assistant-ui types. Translation between assistant-ui/transport state and agentilogue domain types belongs at the backend transport boundary.
+
+A provider may represent:
+
+- a native SDK or API such as OpenCode
+- a local process
+- a remote/cloud agent
+- a protocol adapter such as ACP or A2A
+- a framework such as LangGraph when routing it through the common backend is useful
+
+The physical location of the agent should not matter to the UI.
+
+## Principles
+
+### Keep the simple path simple
+
+A user who only wants the AI SDK path should not need the agent-provider layer.
+
+### Keep agent contracts UI-independent
+
+Agent/provider contracts should use agentilogue domain types rather than assistant-ui types. Translation belongs at the runtime or transport boundary.
 
 ### Preserve native capabilities
 
@@ -84,6 +159,10 @@ Where standards fit naturally, prefer reusable protocol adapters such as ACP or 
 ### Separate agents from tools
 
 Agent runtimes/providers and tool protocols are different concerns. MCP and similar tool mechanisms should not become agent providers merely because both involve remote capabilities.
+
+### Keep routing boring
+
+`AgentService` should initially be little more than provider selection and delegation. Do not turn it into an orchestration framework unless real requirements demand that.
 
 ## First proof: OpenCode
 
@@ -100,6 +179,24 @@ Use it to validate the smallest useful contracts for:
 - sessions and subagents where useful
 
 Do not generalize the contracts before this integration creates a concrete need.
+
+A successful first implementation should prove this path:
+
+```text
+assistant-ui
+    |
+AssistantTransport / ExternalStoreRuntime
+    |
+/api/agent
+    |
+AgentService
+    |
+OpenCodeProvider
+    |
+OpenCode
+```
+
+The goal is not merely to receive an answer. The integration should exercise enough real agent behavior that a second provider can be added without redesigning the UI or provider contract.
 
 ## References and inspiration
 
