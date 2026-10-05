@@ -22,6 +22,8 @@ The project starts from the assistant-ui minimal template. The existing AI SDK +
 - Prefer standard protocols such as ACP or A2A when they fit, but preserve richer native integrations when they add value.
 - Treat MCP/tool integrations separately from agent providers.
 - Avoid new infrastructure, state libraries, persistence, auth, or orchestration unless required by the task.
+- Do not add an AgentService or AgentRegistry while one configured provider per chat session is enough.
+- When provider #2 arrives, prefer a small factory before considering a registry or service.
 
 ## Simplicity budget
 
@@ -46,23 +48,21 @@ Keep this path working.
 
 ## Planned agent path
 
-The likely direction is:
+The minimal direction is:
 
 ```text
 assistant-ui
     |
-AssistantTransport / ExternalStoreRuntime boundary
+ExternalStoreRuntime / AssistantTransport
     |
-backend transport adapter
-    |
-AgentService
+/api/agent
     |
 AgentProvider
     |
 agent runtime/provider
 ```
 
-This is architectural guidance, not a requirement to create every layer immediately.
+For the first provider, the route should call the provider directly. Add a small provider factory only when a second provider creates a real selection problem. A registry or service comes later only if dynamic registration, discovery, orchestration, or shared lifecycle behavior actually requires it.
 
 ## Development approach
 
@@ -70,6 +70,7 @@ This is architectural guidance, not a requirement to create every layer immediat
 2. Reuse existing libraries before adding custom code.
 3. Draft the smallest provider-neutral contracts.
 4. Validate them with one deep OpenCode integration.
-5. Only then extract patterns for ACP, A2A, LangGraph, Eve, or other runtimes.
+5. Add a second provider before generalizing provider selection.
+6. Only then extract patterns for ACP, A2A, LangGraph, Eve, or other runtimes.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the current architecture notes.
