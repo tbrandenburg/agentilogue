@@ -2,24 +2,22 @@
 
 agentilogue aims to be a minimal chat surface for talking to agents across different runtimes and providers.
 
-The project should stay simple: keep working integrations working, add abstraction only when a second implementation proves it is useful, and avoid turning the UI into an agent framework.
+The project should stay simple: keep working integrations working, add abstraction only when a real implementation proves it is useful, and avoid turning the UI into an agent framework.
 
 ## Today
 
 The initial assistant-ui template provides a complete working path:
 
-```text
-assistant-ui
-    |
-useChatRuntime
-    |
-AssistantChatTransport
-    |
-POST /api/chat
-    |
-Vercel AI SDK streamText
-    |
-OpenAI
+```mermaid
+flowchart TD
+    UI["assistant-ui"]
+    Runtime["useChatRuntime"]
+    Transport["AssistantChatTransport"]
+    API["POST /api/chat"]
+    SDK["Vercel AI SDK · streamText"]
+    Model["OpenAI"]
+
+    UI --> Runtime --> Transport --> API --> SDK --> Model
 ```
 
 This path is useful and should remain supported. It is the simplest way to use agentilogue with an AI SDK model.
@@ -28,89 +26,79 @@ This path is useful and should remain supported. It is the simplest way to use a
 
 assistant-ui gives us one UI surface while allowing different runtime integrations underneath it.
 
-The existing AI SDK path remains a first-class lane. Richer agents can use a second lane based on assistant-ui's external-store runtime model and a backend agent abstraction.
+The existing AI SDK path remains a first-class lane. Richer agents can use an ExternalStoreRuntime-backed lane with AssistantTransport between the browser and our backend.
 
-```text
-assistant-ui components
-        |
-        v
-   AssistantRuntime
-        |
-   +----+---------------------+
-   |                          |
-AI SDK lane               agent lane
-   |                          |
-useChatRuntime()          AssistantTransport
-   |                          |
-AI SDK useChat()          ExternalStoreRuntime
-   |                          |
-/api/chat                /api/agent
-   |                          |
-streamText()              AgentService
-   |                          |
-OpenAI / AI SDK           AgentProvider
-                          |- OpenCode
-                          |- ACP
-                          |- A2A
-                          '- LangGraph / others
+```mermaid
+flowchart TB
+    UI["assistant-ui components"] --> AR["AssistantRuntime"]
+
+    AR --> AI["AI SDK lane"]
+    AR --> ESR["ExternalStoreRuntime<br/>agent lane"]
+
+    AI --> UCR["useChatRuntime"]
+    UCR --> ACT["AssistantChatTransport"]
+    ACT --> CHAT["/api/chat"]
+    CHAT --> STREAM["streamText"]
+    STREAM --> MODEL["OpenAI / AI SDK provider"]
+
+    ESR <--> AT["AssistantTransport<br/>commands + streamed state"]
+    AT <--> AGENTAPI["/api/agent"]
+    AGENTAPI --> PROVIDER["AgentProvider"]
+    PROVIDER --> OC["opencode"]
 ```
 
-This diagram is conceptual rather than a strict call stack. In the agent lane, AssistantTransport is the frontend/backend protocol mechanism and feeds an ExternalStoreRuntime-backed assistant runtime. The backend stays responsible for agent execution and provider selection.
+The diagram is conceptual, not a strict internal call stack. The important boundaries are:
 
-The important boundaries are:
-
-- **assistant-ui components** render the conversation and interact with an `AssistantRuntime`.
+- **assistant-ui components** talk to an `AssistantRuntime`.
 - **ExternalStoreRuntime** adapts externally owned conversation/agent state into assistant-ui.
-- **AssistantTransport** is one way to move commands and streamed state between that runtime and a remote backend.
-- **AgentService** handles backend-level routing and coordination.
-- **AgentProvider** isolates concrete agent runtimes and protocols from the UI.
+- **AssistantTransport** moves commands and streamed state between that runtime and a remote backend.
+- **AgentProvider** isolates a concrete agent runtime or protocol from the UI.
+- **`/api/agent`** should stay thin and call the configured provider directly.
+
+There is intentionally no `AgentService` or `AgentRegistry` in the initial design.
 
 ## Direct framework adapters
 
-assistant-ui already demonstrates another useful pattern: framework-specific adapters can map directly into ExternalStoreRuntime.
+assistant-ui already demonstrates that framework-specific adapters can map directly into ExternalStoreRuntime:
 
-```text
-LangGraph ---+
-LangChain ---|
-Eve ---------|
-A2A ---------|
-AG-UI -------|
-OpenCode ----+
-             |
-             v
-   ExternalStoreRuntime
-             |
-             v
-      assistant-ui
+```mermaid
+flowchart TB
+    LG["LangGraph"]
+    LC["LangChain"]
+    EVE["Eve"]
+    A2A["A2A"]
+    AGUI["AG-UI"]
+    OC["opencode"]
+
+    LG --> ESR["ExternalStoreRuntime"]
+    LC --> ESR
+    EVE --> ESR
+    A2A --> ESR
+    AGUI --> ESR
+    OC --> ESR
+
+    ESR --> UI["assistant-ui"]
 ```
 
-These integrations are important references because they show how framework-specific messages, state, tool calls, approvals, attachments, and actions can be projected into a common UI runtime.
+These integrations are useful references for mapping framework-specific messages, state, tool calls, approvals, attachments, and actions into one UI runtime.
 
-agentilogue does not need to force those direct integrations through `AgentProvider`. For a dedicated integration, a direct runtime adapter can be the simplest solution.
+agentilogue does not need to force every integration through `AgentProvider`. A direct adapter can remain the simplest choice for a dedicated integration.
 
-For agentilogue's provider-neutral backend path, however, the intended shape is:
+For agentilogue's provider-neutral backend path, the intended shape is:
 
-```text
-assistant-ui
-    |
-AssistantTransport
-    |
-HTTP / SSE
-    |
-/api/agent
-    |
-AgentService
-    |
-AgentProvider
-    |
-agent runtime or protocol
+```mermaid
+flowchart LR
+    UI["assistant-ui"] <--> RT["ExternalStoreRuntime<br/>+ AssistantTransport"]
+    RT <--> API["/api/agent"]
+    API --> P["AgentProvider"]
+    P --> A["agent runtime / protocol"]
 ```
 
 Both paths should remain possible.
 
 ## Backend boundary
 
-The backend should expose the smallest useful contract between the UI transport and concrete agents.
+The backend should expose the smallest useful contract between the UI transport and a concrete agent.
 
 A future provider contract may be as small as:
 
@@ -124,19 +112,113 @@ interface AgentProvider {
 }
 ```
 
-This is a direction, not an API commitment. OpenCode should help determine what the real minimum contract needs to be.
+This is a direction, not an API commitment. opencode should determine what the real minimum contract needs to be.
 
-The provider layer should not depend on assistant-ui types. Translation between assistant-ui/transport state and agentilogue domain types belongs at the backend transport boundary.
+The provider layer should not depend on assistant-ui types. Translation between assistant-ui/transport state and agentilogue domain types belongs at the transport boundary.
 
 A provider may represent:
 
-- a native SDK or API such as OpenCode
+- a native SDK or API such as opencode
 - a local process
 - a remote/cloud agent
 - a protocol adapter such as ACP or A2A
 - a framework such as LangGraph when routing it through the common backend is useful
 
 The physical location of the agent should not matter to the UI.
+
+## Target agent integrations
+
+The provider abstraction is intended for more than opencode.
+
+The first integration wave should focus on agent CLIs:
+
+- opencode
+- pi
+- codex
+- claude code
+- github copilot
+
+Later, where an SDK gives us a cleaner or richer integration, support SDK-backed implementations as well:
+
+- opencode SDK
+- pi SDK
+- claude code SDK
+
+CLI versus SDK should normally be an implementation detail behind the same provider-facing contract, not a reason to create a second architecture. Only split them into separate provider types if their behavior or capabilities differ enough to matter to callers.
+
+opencode remains the first deep proof because one real implementation should shape the contract before we generalize it to the other agents.
+
+## Capability model
+
+Different agent CLIs and SDKs expose different features. The provider contract should therefore support capability discovery, but we should add capability fields only when agentilogue actually needs to branch on them.
+
+Archon's current `ProviderCapabilities` is a useful reference map. It covers areas such as:
+
+- session resume and session fork
+- MCP
+- hooks and skills
+- subagents
+- tool restrictions and known tool names
+- structured output
+- environment injection
+- cost control and usage/cost reporting
+- reasoning/effort control and fallback models
+- sandbox/container execution
+- native in-process tools
+- provider-specific settings
+
+This is inspiration, not a contract to copy. Archon serves workflow execution and therefore needs capabilities that agentilogue may never need.
+
+Our initial `AgentCapabilities` should contain only capabilities required by the UI or transport. Likely early candidates are session resume, tool calls, approvals, attachments/files, reasoning visibility, and subagent visibility. Add further flags only when a real provider difference requires them.
+
+The rule is:
+
+> capability flags describe meaningful behavioral differences; they are not an inventory of everything an SDK can do.
+
+## Provider selection: grow only when needed
+
+One chat session talks to one configured agent at a time. That lets the initial backend remain extremely small.
+
+### First provider
+
+With only opencode, the route can instantiate or resolve it directly:
+
+```mermaid
+flowchart LR
+    API["/api/agent"] --> OC["OpencodeProvider"] --> O["opencode"]
+```
+
+No service or registry is needed.
+
+### Second provider
+
+When a second provider actually exists, add the smallest useful selection mechanism, likely a factory:
+
+```ts
+function createAgentProvider(config: AgentConfig): AgentProvider {
+  switch (config.type) {
+    case "opencode":
+      return new OpencodeProvider(config);
+    case "acp":
+      return new AcpProvider(config);
+  }
+}
+```
+
+```mermaid
+flowchart LR
+    API["/api/agent"] --> F["createAgentProvider(config)"]
+    F --> OC["OpencodeProvider"]
+    F --> ACP["ACPProvider"]
+```
+
+### Registry or service later
+
+Only introduce an `AgentRegistry` if we need dynamic registration, discovery, plugins, or enough providers that a static factory becomes awkward.
+
+Only introduce an `AgentService` if real cross-provider behavior appears, such as orchestration, shared lifecycle management, policy, retries, scheduling, or other logic that clearly does not belong in the route or provider.
+
+Until then, both are YAGNI.
 
 ## Principles
 
@@ -150,7 +232,7 @@ Agent/provider contracts should use agentilogue domain types rather than assista
 
 ### Preserve native capabilities
 
-Generic protocols are useful, but they should not force richer native integrations into a lowest-common-denominator model. A direct OpenCode integration, for example, may expose capabilities that a generic protocol does not.
+Generic protocols are useful, but they should not force richer native integrations into a lowest-common-denominator model. A direct opencode integration, for example, may expose capabilities that a generic protocol does not.
 
 ### Prefer protocols over provider-specific glue
 
@@ -162,11 +244,11 @@ Agent runtimes/providers and tool protocols are different concerns. MCP and simi
 
 ### Keep routing boring
 
-`AgentService` should initially be little more than provider selection and delegation. Do not turn it into an orchestration framework unless real requirements demand that.
+Provider selection should start as direct construction and become a small factory only when provider #2 arrives. Do not add a service or registry to make the architecture look complete.
 
-## First proof: OpenCode
+## First proof: opencode
 
-The first deeper custom-agent integration should be OpenCode.
+The first deeper custom-agent integration should be opencode. It is the first proof for a broader CLI target set that includes pi, codex, claude code, and github copilot.
 
 Use it to validate the smallest useful contracts for:
 
@@ -182,18 +264,12 @@ Do not generalize the contracts before this integration creates a concrete need.
 
 A successful first implementation should prove this path:
 
-```text
-assistant-ui
-    |
-AssistantTransport / ExternalStoreRuntime
-    |
-/api/agent
-    |
-AgentService
-    |
-OpenCodeProvider
-    |
-OpenCode
+```mermaid
+flowchart LR
+    UI["assistant-ui"] <--> RT["ExternalStoreRuntime<br/>+ AssistantTransport"]
+    RT <--> API["/api/agent"]
+    API --> OP["OpencodeProvider"]
+    OP --> OC["opencode"]
 ```
 
 The goal is not merely to receive an answer. The integration should exercise enough real agent behavior that a second provider can be added without redesigning the UI or provider contract.
@@ -209,22 +285,22 @@ Primary reference for the frontend/runtime boundary:
 - [assistant-ui](https://github.com/assistant-ui/assistant-ui)
 - [ExternalStoreRuntime](https://www.assistant-ui.com/docs/runtimes/custom/external-store)
 - [AssistantTransport](https://www.assistant-ui.com/docs/runtimes/custom/assistant-transport)
-- [OpenCode runtime](https://www.assistant-ui.com/docs/runtimes/opencode/overview)
+- [opencode runtime](https://www.assistant-ui.com/docs/runtimes/opencode/overview)
 - LangGraph, LangChain, Eve, A2A, and AG-UI runtime adapters in the assistant-ui ecosystem
 
 Study how framework-specific state, tool calls, approvals, attachments, and actions are mapped into one UI runtime without forcing the underlying framework into the UI.
 
-### OpenCode
+### opencode
 
-[OpenCode](https://github.com/anomalyco/opencode) is the first native agent integration we want to study deeply.
+[opencode](https://github.com/anomalyco/opencode) is the first native agent integration we want to study deeply.
 
-It should drive the first real version of the AgentProvider contract, especially around sessions, tool execution, permissions, files, streaming, and subagents.
+It should drive the first real version of the AgentProvider contract, especially around sessions, tool execution, permissions, files, streaming, and subagents. The resulting contract should then be challenged against pi, codex, claude code, and github copilot before it is treated as stable.
 
 ### Archon
 
 [Archon](https://github.com/coleam00/Archon) is useful for its provider abstraction and capability-oriented thinking.
 
-Take inspiration from the idea of hiding concrete agent implementations behind a common provider contract, but avoid inheriting Archon-specific workflow, coding-agent, or orchestration concerns unless agentilogue actually needs them.
+Take inspiration from the idea of hiding concrete agent implementations behind a common provider contract and from Archon's capability map across Claude, Codex, Copilot, Pi, and opencode. Avoid inheriting Archon-specific workflow, coding-agent, or orchestration concerns unless agentilogue actually needs them.
 
 ### Open WebUI
 
@@ -255,22 +331,18 @@ Protocol support should be driven by real use cases:
 
 A useful conceptual layering is:
 
-```text
-UI/runtime transport
-        |
-AgentService / AgentProvider
-        |
-ACP / A2A / native providers
-        |
-agent runtime
-        |
-MCP / tools
+```mermaid
+flowchart TB
+    UI["UI / runtime transport"] --> P["AgentProvider"]
+    P --> AP["ACP / A2A / native provider"]
+    AP --> A["agent runtime"]
+    A --> T["MCP / tools"]
 ```
 
 Do not implement all of these up front. Add a protocol only when it removes real integration work or unlocks a concrete agent.
 
 ## What not to build yet
 
-Avoid adding a plugin framework, provider registry service, persistence layer, auth system, orchestration engine, or generalized event bus until the project actually needs one.
+Avoid adding an AgentService, AgentRegistry, plugin framework, persistence layer, auth system, orchestration engine, or generalized event bus until the project actually needs one.
 
 agentilogue should remain a small chat application with clean extension points, not become another agent framework.
