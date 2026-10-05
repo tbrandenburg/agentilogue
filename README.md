@@ -4,7 +4,7 @@
 
 agentilogue is a small Next.js chat app built on [assistant-ui](https://github.com/assistant-ui/assistant-ui). The goal is simple: provide an excellent chat experience while staying flexible about what runs behind it.
 
-The project deliberately keeps the working Vercel AI SDK path while leaving room for richer agent runtimes such as OpenCode, LangGraph, Eve, ACP/A2A agents, or custom providers.
+The project deliberately keeps the working Vercel AI SDK path while leaving room for richer agent runtimes such as opencode, LangGraph, Eve, ACP/A2A agents, or custom providers.
 
 ## Philosophy
 
@@ -50,7 +50,7 @@ The chat UI lives in `components/assistant-ui/elements/thread.aui.tsx`, the runt
 
 ## Where this is going
 
-The next architectural step is to define a small provider-neutral agent contract and validate it through a deep OpenCode integration, while keeping the existing AI SDK lane intact.
+The next architectural step is to define a small provider-neutral agent contract and validate it through a deep opencode integration, while keeping the existing AI SDK lane intact.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design direction and [AGENTS.md](AGENTS.md) for contribution guidance.
 
