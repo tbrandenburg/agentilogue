@@ -1,59 +1,57 @@
 # agentilogue
 
-**Minimal agent chat for any runtime or provider.**
+**A minimal chat UI for AI models today, with a path to richer coding agents tomorrow.**
 
-agentilogue is a small Next.js chat app built on [assistant-ui](https://github.com/assistant-ui/assistant-ui). The goal is simple: provide an excellent chat experience while staying flexible about what runs behind it.
+agentilogue is an open-source chat app built with [Next.js](https://nextjs.org/) and [assistant-ui](https://github.com/assistant-ui/assistant-ui). It keeps the conversation experience small and focused while keeping the backend integration replaceable.
 
-The project deliberately keeps the working Vercel AI SDK path while leaving room for richer agents and runtimes. Initial CLI targets include opencode, pi, codex, claude code, and github copilot; SDK-backed integrations can follow where they add value.
+> **Project status:** Early development. The AI SDK + OpenAI chat path works today. Native integrations for coding-agent runtimes are planned, starting with opencode; they are not yet included.
 
-## Philosophy
+## What works today
 
-- **Simple first.** A basic model chat should stay easy to run.
-- **Runtime-neutral UI.** The chat should not dictate the backend architecture.
-- **Preserve capabilities.** Rich agent integrations should not be flattened unnecessarily.
-- **Add abstraction when earned.** No framework-building before real integrations need it.
-
-## Current setup
-
-Today the included path is:
+The app streams model responses through the Vercel AI SDK and OpenAI:
 
 ```text
-assistant-ui
-    -> useChatRuntime
-    -> /api/chat
-    -> Vercel AI SDK
-    -> OpenAI
+assistant-ui → useChatRuntime → /api/chat → Vercel AI SDK → OpenAI
 ```
 
-It supports streaming chat immediately and serves as the baseline integration.
+The UI and runtime are built on assistant-ui, so the existing model-chat path stays useful on its own while the project explores richer agent integrations.
 
-## Run locally
+## Quick start
 
-Requirements: [Bun](https://bun.sh/) and an OpenAI API key.
+You’ll need [Bun](https://bun.sh/) and an [OpenAI API key](https://platform.openai.com/api-keys).
 
-1. Create `.env.local`:
+1. Clone the repository and install dependencies:
+
+   ```bash
+   git clone https://github.com/tbrandenburg/agentilogue.git
+   cd agentilogue
+   bun install
+   ```
+
+2. Add your key to `.env.local` in the project root:
 
    ```env
    OPENAI_API_KEY=your-api-key
    ```
 
-2. Install and run:
+3. Start the development server:
 
    ```bash
-   bun install
    bun run dev
    ```
 
-3. Open [http://localhost:3000](http://localhost:3000).
+4. Open [http://localhost:3000](http://localhost:3000).
 
-The chat UI lives in `components/assistant-ui/elements/thread.aui.tsx`, the runtime is configured in `app/assistant.tsx`, and the current AI SDK route is `app/api/chat/route.ts`.
+## Direction
 
-## Where this is going
+The next step is a focused integration with a coding-agent runtime, beginning with opencode. The design keeps the chat UI separate from agent execution and aims to preserve useful native agent capabilities rather than forcing every runtime into a lowest-common-denominator interface.
 
-The next architectural step is to define a small provider-neutral agent contract and validate it through a deep opencode integration, then challenge it against the other CLI targets before generalizing it.
+Planned CLI targets include opencode, pi, codex, claude code, and github copilot. This is a direction, not a claim that those integrations are available today. Abstractions will be added as real integrations require them; the working AI SDK path remains a first-class option.
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the design direction and [AGENTS.md](AGENTS.md) for contribution guidance.
+## Architecture
 
-## Status
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the current and planned integration boundaries. See [AGENTS.md](AGENTS.md) for project principles and development guidance.
 
-Early and intentionally small. The priority is a great chat experience and clean extension points, not a large agent framework.
+## Contributing
+
+Contributions and feedback are welcome. Before making a larger change, please read [AGENTS.md](AGENTS.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) to understand the project’s scope and direction.
