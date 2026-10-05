@@ -44,7 +44,7 @@ flowchart TB
     ESR <--> AT["AssistantTransport<br/>commands + streamed state"]
     AT <--> AGENTAPI["/api/agent"]
     AGENTAPI --> PROVIDER["AgentProvider"]
-    PROVIDER --> OC["OpenCode"]
+    PROVIDER --> OC["opencode"]
 ```
 
 The diagram is conceptual, not a strict internal call stack. The important boundaries are:
@@ -68,7 +68,7 @@ flowchart TB
     EVE["Eve"]
     A2A["A2A"]
     AGUI["AG-UI"]
-    OC["OpenCode"]
+    OC["opencode"]
 
     LG --> ESR["ExternalStoreRuntime"]
     LC --> ESR
@@ -112,13 +112,13 @@ interface AgentProvider {
 }
 ```
 
-This is a direction, not an API commitment. OpenCode should determine what the real minimum contract needs to be.
+This is a direction, not an API commitment. opencode should determine what the real minimum contract needs to be.
 
 The provider layer should not depend on assistant-ui types. Translation between assistant-ui/transport state and agentilogue domain types belongs at the transport boundary.
 
 A provider may represent:
 
-- a native SDK or API such as OpenCode
+- a native SDK or API such as opencode
 - a local process
 - a remote/cloud agent
 - a protocol adapter such as ACP or A2A
@@ -132,11 +132,11 @@ One chat session talks to one configured agent at a time. That lets the initial 
 
 ### First provider
 
-With only OpenCode, the route can instantiate or resolve it directly:
+With only opencode, the route can instantiate or resolve it directly:
 
 ```mermaid
 flowchart LR
-    API["/api/agent"] --> OC["OpenCodeProvider"] --> O["OpenCode"]
+    API["/api/agent"] --> OC["OpenCodeProvider"] --> O["opencode"]
 ```
 
 No service or registry is needed.
@@ -183,7 +183,7 @@ Agent/provider contracts should use agentilogue domain types rather than assista
 
 ### Preserve native capabilities
 
-Generic protocols are useful, but they should not force richer native integrations into a lowest-common-denominator model. A direct OpenCode integration, for example, may expose capabilities that a generic protocol does not.
+Generic protocols are useful, but they should not force richer native integrations into a lowest-common-denominator model. A direct opencode integration, for example, may expose capabilities that a generic protocol does not.
 
 ### Prefer protocols over provider-specific glue
 
@@ -197,9 +197,9 @@ Agent runtimes/providers and tool protocols are different concerns. MCP and simi
 
 Provider selection should start as direct construction and become a small factory only when provider #2 arrives. Do not add a service or registry to make the architecture look complete.
 
-## First proof: OpenCode
+## First proof: opencode
 
-The first deeper custom-agent integration should be OpenCode.
+The first deeper custom-agent integration should be opencode.
 
 Use it to validate the smallest useful contracts for:
 
@@ -220,7 +220,7 @@ flowchart LR
     UI["assistant-ui"] <--> RT["ExternalStoreRuntime<br/>+ AssistantTransport"]
     RT <--> API["/api/agent"]
     API --> OP["OpenCodeProvider"]
-    OP --> OC["OpenCode"]
+    OP --> OC["opencode"]
 ```
 
 The goal is not merely to receive an answer. The integration should exercise enough real agent behavior that a second provider can be added without redesigning the UI or provider contract.
@@ -236,14 +236,14 @@ Primary reference for the frontend/runtime boundary:
 - [assistant-ui](https://github.com/assistant-ui/assistant-ui)
 - [ExternalStoreRuntime](https://www.assistant-ui.com/docs/runtimes/custom/external-store)
 - [AssistantTransport](https://www.assistant-ui.com/docs/runtimes/custom/assistant-transport)
-- [OpenCode runtime](https://www.assistant-ui.com/docs/runtimes/opencode/overview)
+- [opencode runtime](https://www.assistant-ui.com/docs/runtimes/opencode/overview)
 - LangGraph, LangChain, Eve, A2A, and AG-UI runtime adapters in the assistant-ui ecosystem
 
 Study how framework-specific state, tool calls, approvals, attachments, and actions are mapped into one UI runtime without forcing the underlying framework into the UI.
 
-### OpenCode
+### opencode
 
-[OpenCode](https://github.com/anomalyco/opencode) is the first native agent integration we want to study deeply.
+[opencode](https://github.com/anomalyco/opencode) is the first native agent integration we want to study deeply.
 
 It should drive the first real version of the AgentProvider contract, especially around sessions, tool execution, permissions, files, streaming, and subagents.
 
