@@ -76,3 +76,7 @@ For the first provider, the route should call the provider directly. Add a small
 7. Only then extract patterns for ACP, A2A, LangGraph, Eve, or other runtimes.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the current architecture notes.
+
+## Lessons Learned
+
+- 2026-10-05: Pitfall: Markdown backticks inside double-quoted shell arguments trigger command substitution and can corrupt GitHub PR text. Prevention: pass Markdown bodies in single-quoted arguments or via a temporary body file.
