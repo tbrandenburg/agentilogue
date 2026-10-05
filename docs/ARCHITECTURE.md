@@ -1,6 +1,6 @@
 # Architecture
 
-Agentilogue aims to be a minimal chat surface for talking to agents across different runtimes and providers.
+agentilogue aims to be a minimal chat surface for talking to agents across different runtimes and providers.
 
 The project should stay simple: keep working integrations working, add abstraction only when a second implementation proves it is useful, and avoid turning the UI into an agent framework.
 
@@ -22,11 +22,11 @@ Vercel AI SDK streamText
 OpenAI
 ```
 
-This path is useful and should remain supported. It is the simplest way to use Agentilogue with an AI SDK model.
+This path is useful and should remain supported. It is the simplest way to use agentilogue with an AI SDK model.
 
 ## Direction
 
-Agentilogue should also support richer agents without replacing the existing path:
+agentilogue should also support richer agents without replacing the existing path:
 
 ```text
                          assistant-ui
@@ -57,7 +57,7 @@ A user who only wants the AI SDK path should not need the agent-provider layer.
 
 ### Keep agent contracts UI-independent
 
-Agent/provider contracts should use Agentilogue domain types rather than assistant-ui types. Translation belongs at the runtime or transport boundary.
+Agent/provider contracts should use agentilogue domain types rather than assistant-ui types. Translation belongs at the runtime or transport boundary.
 
 A future provider contract may be as small as:
 
@@ -127,7 +127,7 @@ It should drive the first real version of the AgentProvider contract, especially
 
 [Archon](https://github.com/coleam00/Archon) is useful for its provider abstraction and capability-oriented thinking.
 
-Take inspiration from the idea of hiding concrete agent implementations behind a common provider contract, but avoid inheriting Archon-specific workflow, coding-agent, or orchestration concerns unless Agentilogue actually needs them.
+Take inspiration from the idea of hiding concrete agent implementations behind a common provider contract, but avoid inheriting Archon-specific workflow, coding-agent, or orchestration concerns unless agentilogue actually needs them.
 
 ### Open WebUI
 
@@ -144,7 +144,7 @@ Important lessons to keep in mind:
 
 [Omnigent](https://github.com/omnigent-ai/omnigent), [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness), and similar harnesses are useful references for multi-agent/runtime interoperability.
 
-Their breadth is inspiration, not a target. Agentilogue should remain a thin chat surface rather than becoming an orchestration platform.
+Their breadth is inspiration, not a target. agentilogue should remain a thin chat surface rather than becoming an orchestration platform.
 
 ### Agent protocols
 
@@ -176,4 +176,4 @@ Do not implement all of these up front. Add a protocol only when it removes real
 
 Avoid adding a plugin framework, provider registry service, persistence layer, auth system, orchestration engine, or generalized event bus until the project actually needs one.
 
-Agentilogue should remain a small chat application with clean extension points, not become another agent framework.
+agentilogue should remain a small chat application with clean extension points, not become another agent framework.
