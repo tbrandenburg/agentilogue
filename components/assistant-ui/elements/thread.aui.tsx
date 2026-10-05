@@ -7,6 +7,7 @@ import { MarkdownText } from "@/components/assistant-ui/elements/markdown-text";
 import { ToolFallback } from "@/components/assistant-ui/elements/tool-fallback.aui";
 import { TooltipIconButton } from "@/components/assistant-ui/elements/tooltip-icon-button";
 import { Button } from "@/components/ui/button";
+import { SessionControls } from "@/components/assistant-ui/elements/session-controls";
 import { cn } from "@/lib/utils";
 import {
   ActionBarMorePrimitive,
@@ -35,7 +36,7 @@ import {
   RefreshCwIcon,
   SquareIcon,
 } from "lucide-react";
-import type { FC } from "react";
+import { useEffect, type FC } from "react";
 
 // Startup exposes a loading placeholder thread; treat it as a new chat so
 // the composer mounts centered. Loads after startup keep the docked layout.
@@ -72,8 +73,51 @@ const ThreadHistorySkeleton: FC = () => (
   </div>
 );
 
-export const Thread: FC = () => {
+type SessionConfig = {
+  id: string;
+  title: string;
+  projectName: string;
+  integration:
+    | "openai:vercel-ai"
+    | "opencode:cli"
+    | "pi:cli"
+    | "codex:cli"
+    | "claude-code:cli"
+    | "github-copilot:cli"
+    | null;
+  agent?: string;
+  model?: string;
+  hasMessages: boolean;
+};
+
+export const Thread: FC<{
+  session: SessionConfig;
+  hasOpenAIKey: boolean;
+  onUpdate: (patch: Partial<SessionConfig>) => void;
+  onNewSession: () => void;
+  onRunningChange: (running: boolean) => void;
+}> = ({ session, hasOpenAIKey, onUpdate, onNewSession, onRunningChange }) => {
   const isEmpty = useAuiState(isNewChatView);
+  const messagesExist = useAuiState((state) => state.thread.messages.length > 0);
+  const isRunning = useAuiState((state) => state.thread.isRunning);
+  const config = { ...session, hasMessages: session.hasMessages || messagesExist };
+  const integrationReady = config.integration === "openai:vercel-ai" && hasOpenAIKey;
+  const sendReason =
+    config.integration === null
+      ? "Choose an integration to send a message."
+      : config.integration !== "openai:vercel-ai"
+        ? "This integration is not implemented yet."
+        : !hasOpenAIKey
+          ? "Configure OPENAI_API_KEY to send a message."
+          : config.model
+            ? "Model override is not wired yet."
+            : "";
+
+  useEffect(() => {
+    if (messagesExist && !session.hasMessages) onUpdate({ hasMessages: true });
+  }, [messagesExist, onUpdate, session.hasMessages]);
+
+  useEffect(() => onRunningChange(isRunning), [isRunning, onRunningChange]);
 
   return (
     <ThreadPrimitive.Root
@@ -104,7 +148,9 @@ export const Thread: FC = () => {
           </AuiIf>
 
           <div data-slot="aui_message-group" className="mb-14 flex flex-col gap-y-6 empty:hidden">
-            <ThreadPrimitive.Messages>{() => <ThreadMessage />}</ThreadPrimitive.Messages>
+            <ThreadPrimitive.Messages>
+              {() => <ThreadMessage canSend={integrationReady && !config.model} />}
+            </ThreadPrimitive.Messages>
           </div>
 
           <ThreadPrimitive.ViewportFooter
@@ -114,8 +160,19 @@ export const Thread: FC = () => {
             )}
           >
             <ThreadScrollToBottom />
-            <Composer />
-            <AuiIf condition={(s) => isNewChatView(s) && s.composer.isEmpty}>
+            <Composer
+              config={config}
+              hasOpenAIKey={hasOpenAIKey}
+              canSend={integrationReady && !config.model}
+              sendReason={sendReason}
+              onUpdate={onUpdate}
+              onNewSession={onNewSession}
+            />
+            <AuiIf
+              condition={(s) =>
+                isNewChatView(s) && s.composer.isEmpty && integrationReady && !config.model
+              }
+            >
               <ThreadSuggestions />
             </AuiIf>
           </ThreadPrimitive.ViewportFooter>
@@ -125,11 +182,11 @@ export const Thread: FC = () => {
   );
 };
 
-const ThreadMessage: FC = () => {
+const ThreadMessage: FC<{ canSend: boolean }> = ({ canSend }) => {
   const role = useAuiState((s) => s.message.role);
   const isEditing = useAuiState((s) => s.message.composer.isEditing);
 
-  if (isEditing) return <EditComposer />;
+  if (isEditing) return <EditComposer canSend={canSend} />;
   if (role === "user") return <UserMessage />;
   return <AssistantMessage />;
 };
@@ -190,9 +247,24 @@ const ThreadSuggestionItem: FC = () => {
   );
 };
 
-const Composer: FC = () => {
+const Composer: FC<{
+  config: SessionConfig;
+  hasOpenAIKey: boolean;
+  canSend: boolean;
+  sendReason: string;
+  onUpdate: (patch: Partial<SessionConfig>) => void;
+  onNewSession: () => void;
+}> = ({ config, hasOpenAIKey, canSend, sendReason, onUpdate, onNewSession }) => {
   return (
-    <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col">
+    <ComposerPrimitive.Root
+      className="aui-composer-root relative flex w-full flex-col"
+      onSubmitCapture={(event) => {
+        if (!canSend) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }}
+    >
       <ComposerPrimitive.AttachmentDropzone asChild>
         <div
           data-slot="aui_composer-shell"
@@ -206,14 +278,28 @@ const Composer: FC = () => {
             autoFocus
             aria-label="Message input"
           />
-          <ComposerAction />
+          <ComposerAction
+            canSend={canSend}
+            config={config}
+            hasOpenAIKey={hasOpenAIKey}
+            reason={sendReason}
+            onUpdate={onUpdate}
+            onNewSession={onNewSession}
+          />
         </div>
       </ComposerPrimitive.AttachmentDropzone>
     </ComposerPrimitive.Root>
   );
 };
 
-const ComposerAction: FC = () => {
+const ComposerAction: FC<{
+  canSend: boolean;
+  config: SessionConfig;
+  hasOpenAIKey: boolean;
+  reason: string;
+  onUpdate: (patch: Partial<SessionConfig>) => void;
+  onNewSession: () => void;
+}> = ({ canSend, config, hasOpenAIKey, reason, onUpdate, onNewSession }) => {
   // The stop control only cancels the send while no run it could stop is going.
   const isSending = useAuiState(
     (s) =>
@@ -221,8 +307,20 @@ const ComposerAction: FC = () => {
   );
 
   return (
-    <div className="aui-composer-action-wrapper relative flex items-center justify-between">
-      <ComposerAddAttachment />
+    <div className="aui-composer-action-wrapper relative flex flex-wrap items-center justify-between gap-y-1">
+      <div className="flex min-w-0 flex-1 flex-wrap items-start gap-1">
+        <ComposerAddAttachment />
+        <SessionControls
+          config={config}
+          hasOpenAIKey={hasOpenAIKey}
+          reason={reason}
+          onChange={onUpdate}
+          onNewSession={onNewSession}
+        />
+        <span className="sr-only">
+          {canSend ? "Ready to send" : `Sending unavailable: ${reason}`}
+        </span>
+      </div>
       <div className="flex items-center gap-1.5">
         <AuiIf condition={(s) => s.thread.capabilities.dictation}>
           <AuiIf condition={(s) => s.composer.dictation == null}>
@@ -264,12 +362,13 @@ const ComposerAction: FC = () => {
         >
           <ComposerPrimitive.Send asChild>
             <TooltipIconButton
-              tooltip="Send message"
+              tooltip={canSend ? "Send message" : "Sending unavailable: configuration required"}
               side="bottom"
               type="button"
               variant="default"
               size="icon"
               className="aui-composer-send size-7 rounded-full"
+              disabled={!canSend}
               aria-label="Send message"
             >
               <ArrowUpIcon className="aui-composer-send-icon size-4" />
@@ -443,13 +542,21 @@ const UserActionBar: FC = () => {
   );
 };
 
-const EditComposer: FC = () => {
+const EditComposer: FC<{ canSend: boolean }> = ({ canSend }) => {
   return (
     <MessagePrimitive.Root
       data-slot="aui_edit-composer-wrapper"
       className="flex flex-col px-2 [contain-intrinsic-size:auto_200px] [content-visibility:auto]"
     >
-      <ComposerPrimitive.Root className="aui-edit-composer-root border-foreground/10 focus-within:border-foreground/25 ms-auto flex w-full max-w-[85%] cursor-text flex-col rounded-(--composer-radius) border bg-(--composer-bg) shadow-[0_4px_16px_-8px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] transition-[border-color] dark:shadow-none">
+      <ComposerPrimitive.Root
+        className="aui-edit-composer-root border-foreground/10 focus-within:border-foreground/25 ms-auto flex w-full max-w-[85%] cursor-text flex-col rounded-(--composer-radius) border bg-(--composer-bg) shadow-[0_4px_16px_-8px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] transition-[border-color] dark:shadow-none"
+        onSubmitCapture={(event) => {
+          if (!canSend) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+        }}
+      >
         <ComposerPrimitive.Input
           className="aui-edit-composer-input text-foreground min-h-14 w-full resize-none bg-transparent px-4 pt-3 pb-1 text-base outline-none"
           autoFocus
@@ -461,7 +568,7 @@ const EditComposer: FC = () => {
             </Button>
           </ComposerPrimitive.Cancel>
           <ComposerPrimitive.Send asChild>
-            <Button size="sm" className="h-8 px-3">
+            <Button size="sm" className="h-8 px-3" disabled={!canSend}>
               Update
             </Button>
           </ComposerPrimitive.Send>

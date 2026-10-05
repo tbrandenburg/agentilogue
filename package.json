@@ -10,6 +10,8 @@
     "format:fix": "oxfmt",
     "lint": "oxlint",
     "test": "bun test --pass-with-no-tests",
+    "models:check": "bun scripts/models.ts check",
+    "models:sync": "bun scripts/models.ts sync",
     "lint:fix": "oxlint --fix && oxfmt"
   },
   "dependencies": {
