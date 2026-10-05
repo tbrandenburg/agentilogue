@@ -2,7 +2,7 @@
 
 ## Project intent
 
-Agentilogue is a minimal agent chat UI that should work with different agent runtimes and providers while remaining easy to understand and run.
+agentilogue is a minimal agent chat UI that should work with different agent runtimes and providers while remaining easy to understand and run.
 
 The project starts from the assistant-ui minimal template. The existing AI SDK + OpenAI path is a first-class supported integration, not temporary scaffolding.
 
@@ -27,12 +27,12 @@ The project starts from the assistant-ui minimal template. The existing AI SDK +
 
 Treat lines of code as a cost, not a goal.
 
-- Aim to keep Agentilogue-specific handwritten source below **5,000 LOC** while the project is young.
+- Aim to keep agentilogue-specific handwritten source below **5,000 LOC** while the project is young.
 - Any change that pushes handwritten source above that budget must explicitly challenge whether the same result can be achieved by deleting code, reusing an existing library, or simplifying the requirement.
 - A PR adding more than roughly **300 net LOC** should receive the same challenge even when the repository is below the overall budget.
 - Prefer deleting or consolidating code before raising the budget.
 - Do not count lockfiles, generated files, documentation, or substantially unmodified upstream/copied assistant-ui or shadcn components against the budget.
-- Avoid large files as a smell rather than a rule: when an Agentilogue-specific file approaches **400 LOC**, challenge whether it has too many responsibilities before splitting it mechanically.
+- Avoid large files as a smell rather than a rule: when an agentilogue-specific file approaches **400 LOC**, challenge whether it has too many responsibilities before splitting it mechanically.
 
 These are soft limits. Crossing them is allowed when the value is clear, but it should never happen accidentally.
 
