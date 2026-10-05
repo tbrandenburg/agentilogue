@@ -101,6 +101,77 @@ Use it to validate the smallest useful contracts for:
 
 Do not generalize the contracts before this integration creates a concrete need.
 
+## References and inspiration
+
+These projects and protocols are useful references. We should study their boundaries and lessons, not copy their complexity.
+
+### assistant-ui
+
+Primary reference for the frontend/runtime boundary:
+
+- [assistant-ui](https://github.com/assistant-ui/assistant-ui)
+- [ExternalStoreRuntime](https://www.assistant-ui.com/docs/runtimes/custom/external-store)
+- [AssistantTransport](https://www.assistant-ui.com/docs/runtimes/custom/assistant-transport)
+- [OpenCode runtime](https://www.assistant-ui.com/docs/runtimes/opencode/overview)
+- LangGraph, LangChain, Eve, A2A, and AG-UI runtime adapters in the assistant-ui ecosystem
+
+Study how framework-specific state, tool calls, approvals, attachments, and actions are mapped into one UI runtime without forcing the underlying framework into the UI.
+
+### OpenCode
+
+[OpenCode](https://github.com/anomalyco/opencode) is the first native agent integration we want to study deeply.
+
+It should drive the first real version of the AgentProvider contract, especially around sessions, tool execution, permissions, files, streaming, and subagents.
+
+### Archon
+
+[Archon](https://github.com/coleam00/Archon) is useful for its provider abstraction and capability-oriented thinking.
+
+Take inspiration from the idea of hiding concrete agent implementations behind a common provider contract, but avoid inheriting Archon-specific workflow, coding-agent, or orchestration concerns unless Agentilogue actually needs them.
+
+### Open WebUI
+
+[Open WebUI](https://github.com/open-webui/open-webui) is useful as a mature interoperability reference.
+
+Important lessons to keep in mind:
+
+- prefer protocols/adapters over one-off provider glue where practical
+- keep tools separate from agents
+- be explicit about who owns tool execution to avoid duplicate tool-call loops
+- preserve a simple model-chat path alongside richer integrations
+
+### Omnigent and agent harnesses
+
+[Omnigent](https://github.com/omnigent-ai/omnigent), [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness), and similar harnesses are useful references for multi-agent/runtime interoperability.
+
+Their breadth is inspiration, not a target. Agentilogue should remain a thin chat surface rather than becoming an orchestration platform.
+
+### Agent protocols
+
+Protocol support should be driven by real use cases:
+
+- [ACP](https://agentclientprotocol.com/) for client-to-coding-agent interoperability
+- [A2A](https://a2a-protocol.org/) for remote agent interoperability
+- [AG-UI](https://docs.ag-ui.com/) as a reference for agent-to-UI event/state exchange
+- [MCP](https://modelcontextprotocol.io/) for tools and resources, not as an AgentProvider abstraction
+- [Microsoft Agent Host Protocol](https://github.com/microsoft/agent-host-protocol) as a reference when multi-client or hosted agent-session coordination becomes relevant
+
+A useful conceptual layering is:
+
+```text
+UI/runtime transport
+        |
+AgentService / AgentProvider
+        |
+ACP / A2A / native providers
+        |
+agent runtime
+        |
+MCP / tools
+```
+
+Do not implement all of these up front. Add a protocol only when it removes real integration work or unlocks a concrete agent.
+
 ## What not to build yet
 
 Avoid adding a plugin framework, provider registry service, persistence layer, auth system, orchestration engine, or generalized event bus until the project actually needs one.
