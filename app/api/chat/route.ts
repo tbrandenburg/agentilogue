@@ -1,11 +1,6 @@
 import { openai } from "@ai-sdk/openai";
 import { frontendTools } from "@assistant-ui/ai-sdk";
-import {
-  type JSONSchema7,
-  streamText,
-  convertToModelMessages,
-  type UIMessage,
-} from "ai";
+import { type JSONSchema7, streamText, convertToModelMessages, type UIMessage } from "ai";
 
 export const maxDuration = 30;
 
@@ -30,7 +25,6 @@ export async function POST(req: Request) {
   });
 
   return result.toUIMessageStreamResponse({
-    onError: (error) =>
-      error instanceof Error ? error.message : String(error),
+    onError: (error) => (error instanceof Error ? error.message : String(error)),
   });
 }

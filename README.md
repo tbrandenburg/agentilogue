@@ -55,3 +55,8 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the current and planned int
 ## Contributing
 
 Contributions and feedback are welcome. Before making a larger change, please read [AGENTS.md](AGENTS.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) to understand the project’s scope and direction.
+
+Run the project checks with `make format`, `make lint`, and `make test`. To
+create a version commit and Git tag, then publish a GitHub release with generated
+notes, run `make release BUMP=PATCH` (or `MINOR` / `MAJOR`). Releases require a
+clean working tree and an authenticated `gh` CLI.

@@ -8,7 +8,8 @@
     "start": "next start",
     "format": "oxfmt --check",
     "format:fix": "oxfmt",
-    "lint": "oxlint && oxfmt --check",
+    "lint": "oxlint",
+    "test": "bun test --pass-with-no-tests",
     "lint:fix": "oxlint --fix && oxfmt"
   },
   "dependencies": {

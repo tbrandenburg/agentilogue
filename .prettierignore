@@ -1,0 +1,3 @@
+# Assistant-ui's governed skills are installed from assistant-ui/skills.
+# Keep their upstream formatting intact; format application source and project docs.
+.agents/skills/
