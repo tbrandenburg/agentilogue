@@ -2,7 +2,7 @@
 
 **Minimal agent chat for any runtime or provider.**
 
-Agentilogue is a small Next.js chat app built on [assistant-ui](https://github.com/assistant-ui/assistant-ui). The goal is simple: provide an excellent chat experience while staying flexible about what runs behind it.
+agentilogue is a small Next.js chat app built on [assistant-ui](https://github.com/assistant-ui/assistant-ui). The goal is simple: provide an excellent chat experience while staying flexible about what runs behind it.
 
 The project deliberately keeps the working Vercel AI SDK path while leaving room for richer agent runtimes such as OpenCode, LangGraph, Eve, ACP/A2A agents, or custom providers.
 
