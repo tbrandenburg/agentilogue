@@ -69,7 +69,7 @@ For the first provider, the route should call the provider directly. Add a small
 1. Keep the UI working, polished, and minimal.
 2. Reuse existing libraries before adding custom code.
 3. Draft the smallest provider-neutral contracts.
-4. Validate them with one deep OpenCode integration.
+4. Validate them with one deep opencode integration.
 5. Add a second provider before generalizing provider selection.
 6. Only then extract patterns for ACP, A2A, LangGraph, Eve, or other runtimes.
 
