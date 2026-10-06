@@ -80,3 +80,4 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the current architecture no
 ## Lessons Learned
 
 - 2026-10-06: Pitfall: Concurrent Next.js dev servers from one checkout share `.next` state and can reject the second server. Prevention: Run simultaneous app variants from separate worktrees and inspect startup logs before browser testing.
+- 2026-10-06: Pitfall: A full filesystem can leave partial checkout writes when `git switch` or `git worktree add` fails. Prevention: Check `df -h` before checkout/worktree operations; after failure, inspect `git status` and verify or restore the tree before continuing.
