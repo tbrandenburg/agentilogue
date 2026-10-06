@@ -6,16 +6,13 @@ import { AssistantChatTransport, useChatRuntime } from "@assistant-ui/ai-sdk";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { useCallback, useRef, useState } from "react";
 import { Thread } from "@/components/assistant-ui/elements/thread.aui";
-import { getRunTargetLabel, type RunTargetId } from "@/lib/run-target";
+import type { RunTargetId } from "@/lib/run-target";
 
 type ChatSession = {
   id: string;
   title: string;
   projectName: string;
   runTarget: RunTargetId | null;
-  agent?: string;
-  model?: string;
-  runTargetAutoSelected: boolean;
 };
 
 const createSession = (id: string, projectName: string, hasOpenAIKey: boolean): ChatSession => ({
@@ -23,18 +20,7 @@ const createSession = (id: string, projectName: string, hasOpenAIKey: boolean): 
   title: `chat ${id}`,
   projectName,
   runTarget: hasOpenAIKey ? "openai:vercel-ai" : null,
-  runTargetAutoSelected: hasOpenAIKey,
 });
-
-const getSendDisabledReason = (session: ChatSession, hasOpenAIKey: boolean) => {
-  if (session.runTarget === null) return "Choose what should run this chat.";
-  if (session.runTarget !== "openai:vercel-ai") {
-    return `${getRunTargetLabel(session.runTarget)} is not available yet.`;
-  }
-  if (!hasOpenAIKey) return "Configure OPENAI_API_KEY to send a message.";
-  if (session.model) return "Model override is not wired yet.";
-  return "";
-};
 
 type AssistantProps = { hasOpenAIKey: boolean; projectName: string };
 
@@ -129,7 +115,6 @@ export const Assistant = ({ hasOpenAIKey, projectName }: AssistantProps) => {
                 session={session}
                 hasOpenAIKey={hasOpenAIKey}
                 onUpdate={(update) => updateSession(session.id, update)}
-                onNewSession={addSession}
                 onRunningChange={updateRunning}
               />
             </Tabs.Panel>
@@ -144,7 +129,6 @@ type SessionRuntimeProps = {
   session: ChatSession;
   hasOpenAIKey: boolean;
   onUpdate: (update: Partial<ChatSession>) => void;
-  onNewSession: () => void;
   onRunningChange: (id: string, running: boolean) => void;
 };
 
@@ -152,11 +136,9 @@ const SessionRuntime = ({
   session,
   hasOpenAIKey,
   onUpdate,
-  onNewSession,
   onRunningChange,
 }: SessionRuntimeProps) => {
-  const sendDisabledReason = getSendDisabledReason(session, hasOpenAIKey);
-  const canSend = sendDisabledReason === "";
+  const canSend = session.runTarget === "openai:vercel-ai" && hasOpenAIKey;
   const reportRunning = useCallback(
     (running: boolean) => onRunningChange(session.id, running),
     [onRunningChange, session.id],
@@ -174,10 +156,7 @@ const SessionRuntime = ({
       <Thread
         session={session}
         hasOpenAIKey={hasOpenAIKey}
-        sendDisabledReason={sendDisabledReason}
-        canRegenerate={canSend}
         onUpdate={onUpdate}
-        onNewSession={onNewSession}
         onRunningChange={reportRunning}
       />
     </AssistantRuntimeProvider>

@@ -79,30 +79,15 @@ type SessionConfig = {
   title: string;
   projectName: string;
   runTarget: RunTargetId | null;
-  runTargetAutoSelected: boolean;
-  agent?: string;
-  model?: string;
 };
 
 export const Thread: FC<{
   session: SessionConfig;
   hasOpenAIKey: boolean;
-  sendDisabledReason: string;
-  canRegenerate: boolean;
   onUpdate: (patch: Partial<SessionConfig>) => void;
-  onNewSession: () => void;
   onRunningChange: (running: boolean) => void;
-}> = ({
-  session,
-  hasOpenAIKey,
-  sendDisabledReason,
-  canRegenerate,
-  onUpdate,
-  onNewSession,
-  onRunningChange,
-}) => {
+}> = ({ session, hasOpenAIKey, onUpdate, onRunningChange }) => {
   const isEmpty = useAuiState(isNewChatView);
-  const messagesExist = useAuiState((state) => state.thread.messages.length > 0);
   const isRunning = useAuiState((state) => state.thread.isRunning);
   const config = session;
 
@@ -137,14 +122,7 @@ export const Thread: FC<{
           </AuiIf>
 
           <div data-slot="aui_message-group" className="mb-14 flex flex-col gap-y-6 empty:hidden">
-            <ThreadPrimitive.Messages>
-              {() => (
-                <ThreadMessage
-                  canRegenerate={canRegenerate}
-                  sendDisabledReason={sendDisabledReason}
-                />
-              )}
-            </ThreadPrimitive.Messages>
+            <ThreadPrimitive.Messages>{() => <ThreadMessage />}</ThreadPrimitive.Messages>
           </div>
 
           <ThreadPrimitive.ViewportFooter
@@ -154,17 +132,8 @@ export const Thread: FC<{
             )}
           >
             <ThreadScrollToBottom />
-            <Composer
-              config={config}
-              hasOpenAIKey={hasOpenAIKey}
-              hasMessages={messagesExist}
-              sendDisabledReason={sendDisabledReason}
-              onUpdate={onUpdate}
-              onNewSession={onNewSession}
-            />
-            <AuiIf
-              condition={(s) => isNewChatView(s) && s.composer.isEmpty && sendDisabledReason === ""}
-            >
+            <Composer config={config} hasOpenAIKey={hasOpenAIKey} onUpdate={onUpdate} />
+            <AuiIf condition={(s) => isNewChatView(s) && s.composer.isEmpty && s.composer.canSend}>
               <ThreadSuggestions />
             </AuiIf>
           </ThreadPrimitive.ViewportFooter>
@@ -174,16 +143,13 @@ export const Thread: FC<{
   );
 };
 
-const ThreadMessage: FC<{ canRegenerate: boolean; sendDisabledReason: string }> = ({
-  canRegenerate,
-  sendDisabledReason,
-}) => {
+const ThreadMessage: FC = () => {
   const role = useAuiState((s) => s.message.role);
   const isEditing = useAuiState((s) => s.message.composer.isEditing);
 
-  if (isEditing) return <EditComposer canSend={canRegenerate} />;
+  if (isEditing) return <EditComposer />;
   if (role === "user") return <UserMessage />;
-  return <AssistantMessage canRegenerate={canRegenerate} sendDisabledReason={sendDisabledReason} />;
+  return <AssistantMessage />;
 };
 
 const ThreadScrollToBottom: FC = () => {
@@ -245,11 +211,8 @@ const ThreadSuggestionItem: FC = () => {
 const Composer: FC<{
   config: SessionConfig;
   hasOpenAIKey: boolean;
-  hasMessages: boolean;
-  sendDisabledReason: string;
   onUpdate: (patch: Partial<SessionConfig>) => void;
-  onNewSession: () => void;
-}> = ({ config, hasOpenAIKey, hasMessages, sendDisabledReason, onUpdate, onNewSession }) => {
+}> = ({ config, hasOpenAIKey, onUpdate }) => {
   return (
     <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col">
       <ComposerPrimitive.AttachmentDropzone asChild>
@@ -265,14 +228,7 @@ const Composer: FC<{
             autoFocus
             aria-label="Message input"
           />
-          <ComposerAction
-            config={config}
-            hasOpenAIKey={hasOpenAIKey}
-            hasMessages={hasMessages}
-            sendDisabledReason={sendDisabledReason}
-            onUpdate={onUpdate}
-            onNewSession={onNewSession}
-          />
+          <ComposerAction config={config} hasOpenAIKey={hasOpenAIKey} onUpdate={onUpdate} />
         </div>
       </ComposerPrimitive.AttachmentDropzone>
     </ComposerPrimitive.Root>
@@ -282,11 +238,8 @@ const Composer: FC<{
 const ComposerAction: FC<{
   config: SessionConfig;
   hasOpenAIKey: boolean;
-  hasMessages: boolean;
-  sendDisabledReason: string;
   onUpdate: (patch: Partial<SessionConfig>) => void;
-  onNewSession: () => void;
-}> = ({ config, hasOpenAIKey, hasMessages, sendDisabledReason, onUpdate, onNewSession }) => {
+}> = ({ config, hasOpenAIKey, onUpdate }) => {
   // The stop control only cancels the send while no run it could stop is going.
   const isSending = useAuiState(
     (s) =>
@@ -294,20 +247,10 @@ const ComposerAction: FC<{
   );
 
   return (
-    <div className="aui-composer-action-wrapper relative flex flex-wrap items-center justify-between gap-y-1">
-      <div className="flex min-w-0 flex-1 flex-wrap items-start gap-1">
+    <div className="aui-composer-action-wrapper relative flex items-center justify-between">
+      <div className="flex min-w-0 flex-1 items-center gap-1">
         <ComposerAddAttachment />
-        <SessionControls
-          config={config}
-          hasMessages={hasMessages}
-          hasOpenAIKey={hasOpenAIKey}
-          sendDisabledReason={sendDisabledReason}
-          onChange={onUpdate}
-          onNewSession={onNewSession}
-        />
-        <span className="sr-only">
-          {sendDisabledReason ? `Sending unavailable: ${sendDisabledReason}` : "Ready to send"}
-        </span>
+        <SessionControls config={config} hasOpenAIKey={hasOpenAIKey} onChange={onUpdate} />
       </div>
       <div className="flex items-center gap-1.5">
         <AuiIf condition={(s) => s.thread.capabilities.dictation}>
@@ -350,9 +293,7 @@ const ComposerAction: FC<{
         >
           <ComposerPrimitive.Send asChild>
             <TooltipIconButton
-              tooltip={
-                sendDisabledReason ? `Sending unavailable: ${sendDisabledReason}` : "Send message"
-              }
+              tooltip="Send message"
               side="bottom"
               type="button"
               variant="default"
@@ -397,10 +338,7 @@ const MessageError: FC = () => {
   );
 };
 
-const AssistantMessage: FC<{ canRegenerate: boolean; sendDisabledReason: string }> = ({
-  canRegenerate,
-  sendDisabledReason,
-}) => {
+const AssistantMessage: FC = () => {
   const ACTION_BAR_PT = "pt-1.5";
   const ACTION_BAR_HEIGHT = `min-h-7.5 ${ACTION_BAR_PT}`;
 
@@ -440,16 +378,13 @@ const AssistantMessage: FC<{ canRegenerate: boolean; sendDisabledReason: string 
         className={cn("ms-2 flex items-center", ACTION_BAR_HEIGHT)}
       >
         <BranchPicker />
-        <AssistantActionBar canRegenerate={canRegenerate} sendDisabledReason={sendDisabledReason} />
+        <AssistantActionBar />
       </div>
     </MessagePrimitive.Root>
   );
 };
 
-const AssistantActionBar: FC<{ canRegenerate: boolean; sendDisabledReason: string }> = ({
-  canRegenerate,
-  sendDisabledReason,
-}) => {
+const AssistantActionBar: FC = () => {
   return (
     <ActionBarPrimitive.Root
       hideWhenRunning
@@ -467,15 +402,7 @@ const AssistantActionBar: FC<{ canRegenerate: boolean; sendDisabledReason: strin
         </TooltipIconButton>
       </ActionBarPrimitive.Copy>
       <ActionBarPrimitive.Reload asChild>
-        <TooltipIconButton
-          tooltip={canRegenerate ? "Refresh" : `Regeneration unavailable: ${sendDisabledReason}`}
-          disabled={!canRegenerate}
-          aria-label={
-            canRegenerate
-              ? "Regenerate response"
-              : `Regeneration unavailable: ${sendDisabledReason}`
-          }
-        >
+        <TooltipIconButton tooltip="Refresh">
           <RefreshCwIcon />
         </TooltipIconButton>
       </ActionBarPrimitive.Reload>
@@ -545,22 +472,13 @@ const UserActionBar: FC = () => {
   );
 };
 
-const EditComposer: FC<{ canSend: boolean }> = ({ canSend }) => {
+const EditComposer: FC = () => {
   return (
     <MessagePrimitive.Root
       data-slot="aui_edit-composer-wrapper"
       className="flex flex-col px-2 [contain-intrinsic-size:auto_200px] [content-visibility:auto]"
     >
-      <ComposerPrimitive.Root
-        className="aui-edit-composer-root border-foreground/10 focus-within:border-foreground/25 ms-auto flex w-full max-w-[85%] cursor-text flex-col rounded-(--composer-radius) border bg-(--composer-bg) shadow-[0_4px_16px_-8px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] transition-[border-color] dark:shadow-none"
-        onSubmitCapture={(event) => {
-          // Runtime isSendDisabled intentionally does not gate message-edit submissions.
-          if (!canSend) {
-            event.preventDefault();
-            event.stopPropagation();
-          }
-        }}
-      >
+      <ComposerPrimitive.Root className="aui-edit-composer-root border-foreground/10 focus-within:border-foreground/25 ms-auto flex w-full max-w-[85%] cursor-text flex-col rounded-(--composer-radius) border bg-(--composer-bg) shadow-[0_4px_16px_-8px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] transition-[border-color] dark:shadow-none">
         <ComposerPrimitive.Input
           className="aui-edit-composer-input text-foreground min-h-14 w-full resize-none bg-transparent px-4 pt-3 pb-1 text-base outline-none"
           autoFocus
@@ -572,7 +490,7 @@ const EditComposer: FC<{ canSend: boolean }> = ({ canSend }) => {
             </Button>
           </ComposerPrimitive.Cancel>
           <ComposerPrimitive.Send asChild>
-            <Button size="sm" className="h-8 px-3" disabled={!canSend}>
+            <Button size="sm" className="h-8 px-3">
               Update
             </Button>
           </ComposerPrimitive.Send>
