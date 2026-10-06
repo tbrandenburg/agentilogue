@@ -97,11 +97,13 @@ function Option({
 export function SessionControls({ config, hasOpenAIKey, onChange }: Props) {
   const hasMessages = useAuiState((state) => state.thread.messages.length > 0);
   const isRunning = useAuiState((state) => state.thread.isRunning);
+  const isSubmitting = useAuiState((state) => state.composer.submission !== undefined);
   const [modelsExpanded, setModelsExpanded] = useState(false);
   const tierModels = Object.entries(models.openai.tiers).filter(
     (entry): entry is [string, string] => typeof entry[1] === "string",
   );
-  const modelEnabled = config.runTarget === "openai:vercel-ai" && hasOpenAIKey && !isRunning;
+  const modelEnabled =
+    config.runTarget === "openai:vercel-ai" && hasOpenAIKey && !isRunning && !isSubmitting;
   const options: ModelOption[] = [
     { id: DEFAULT_OPTION_ID, name: "Default" },
     ...Object.entries(models).flatMap(([creator, catalog]) =>
