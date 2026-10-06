@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import catalog from "../data/models.json";
-import { getUpstreamModels } from "../scripts/models";
+import { formatUnifiedDiff, getUpstreamModels } from "../scripts/models";
 
 const labs = [
   "openai",
@@ -61,5 +61,28 @@ describe("checked-in model suggestions", () => {
     };
 
     assert.throws(() => getUpstreamModels(providerCatalog, "alibaba"), /missing tracked lab/);
+  });
+
+  it("prints an applicable unified diff for a catalog change", () => {
+    const before = '{\n  "minimax": {\n    "models": [\n      "MiniMax-M2"\n    ]\n  }\n}\n';
+    const after =
+      '{\n  "minimax": {\n    "models": [\n      "MiniMax-H3",\n      "MiniMax-M2"\n    ]\n  }\n}\n';
+
+    assert.equal(
+      formatUnifiedDiff(before, after),
+      [
+        "diff --git a/data/models.json b/data/models.json",
+        "--- a/data/models.json",
+        "+++ b/data/models.json",
+        "@@ -1,6 +1,7 @@",
+        " {",
+        '   "minimax": {',
+        '     "models": [',
+        '+      "MiniMax-H3",',
+        '       "MiniMax-M2"',
+        "     ]",
+        "   }",
+      ].join("\n"),
+    );
   });
 });
