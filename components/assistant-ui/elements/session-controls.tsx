@@ -6,18 +6,12 @@ import { CheckIcon, ChevronDownIcon } from "lucide-react";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import models from "@/data/models.json";
+import { getRunTargetLabel, runTargets, type RunTargetId } from "@/lib/run-target";
 
-type IntegrationId =
-  | "openai:vercel-ai"
-  | "opencode:cli"
-  | "pi:cli"
-  | "codex:cli"
-  | "claude-code:cli"
-  | "github-copilot:cli";
 type Config = {
   projectName: string;
-  integration: IntegrationId | null;
-  integrationAutoSelected: boolean;
+  runTarget: RunTargetId | null;
+  runTargetAutoSelected: boolean;
   agent?: string;
   model?: string;
 };
@@ -29,15 +23,6 @@ type Props = {
   onChange: (patch: Partial<Config>) => void;
   onNewSession: () => void;
 };
-
-const integrations: { id: IntegrationId; label: string }[] = [
-  { id: "openai:vercel-ai", label: "AI SDK · OpenAI" },
-  { id: "opencode:cli", label: "opencode" },
-  { id: "pi:cli", label: "pi" },
-  { id: "codex:cli", label: "codex" },
-  { id: "claude-code:cli", label: "claude code" },
-  { id: "github-copilot:cli", label: "github copilot" },
-];
 
 const buttonClass =
   "inline-flex max-w-40 items-center gap-1 rounded px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:text-muted-foreground/55";
@@ -118,8 +103,8 @@ export function SessionControls({
   onNewSession,
 }: Props) {
   const [lockedNotice, setLockedNotice] = useState(false);
-  const ready = config.integration === "openai:vercel-ai" && hasOpenAIKey;
-  const supported = config.integration === "openai:vercel-ai";
+  const ready = config.runTarget === "openai:vercel-ai" && hasOpenAIKey;
+  const supported = config.runTarget === "openai:vercel-ai";
   const agentDisabledReason = supported
     ? "AI SDK · OpenAI does not expose named agents."
     : "Agent selection is not available for this choice yet.";
@@ -160,12 +145,12 @@ export function SessionControls({
         </Popover.Portal>
       </Popover.Root>
       <Picker
-        label="Integration"
-        value={config.integration ?? "none"}
+        label="Run with"
+        value={config.runTarget ?? "none"}
         formatValue={(value) =>
           value === "none"
             ? "None"
-            : (integrations.find((integration) => integration.id === value)?.label ?? value)
+            : (runTargets.find((runTarget) => runTarget.id === value)?.label ?? value)
         }
         onValueChange={(value) => {
           if (hasMessages) {
@@ -173,23 +158,21 @@ export function SessionControls({
             return;
           }
           onChange({
-            integration: value === "none" ? null : (value as IntegrationId),
-            integrationAutoSelected: false,
+            runTarget: value === "none" ? null : (value as RunTargetId),
+            runTargetAutoSelected: false,
           });
         }}
       >
-        <Option value="none">
-          None <span className="text-xs text-muted-foreground">· no backend</span>
-        </Option>
-        {integrations.map((integration) => (
-          <Option key={integration.id} value={integration.id}>
-            <span>{integration.label}</span>
+        <Option value="none">None</Option>
+        {runTargets.map((runTarget) => (
+          <Option key={runTarget.id} value={runTarget.id}>
+            <span>{runTarget.label}</span>
             <span className="ml-2 text-xs text-muted-foreground">
-              {integration.id === "openai:vercel-ai"
+              {runTarget.id === "openai:vercel-ai"
                 ? hasOpenAIKey
                   ? "Ready"
                   : "Missing API key"
-                : "Not implemented yet"}
+                : "Not available yet"}
             </span>
           </Option>
         ))}
@@ -222,13 +205,11 @@ export function SessionControls({
           </Option>
         ))}
       </Picker>
-      {config.integration === "openai:vercel-ai" &&
-        config.integrationAutoSelected &&
-        hasOpenAIKey && (
-          <span className="px-1 text-[11px] text-muted-foreground">
-            Auto-selected from OPENAI_API_KEY
-          </span>
-        )}
+      {config.runTarget === "openai:vercel-ai" && config.runTargetAutoSelected && hasOpenAIKey && (
+        <span className="px-1 text-[11px] text-muted-foreground">
+          AI SDK · OpenAI was selected automatically.
+        </span>
+      )}
       {supported && (
         <span className="basis-full px-1 text-xs text-muted-foreground">
           Named agents are unavailable on OpenAI.
@@ -251,7 +232,9 @@ export function SessionControls({
       )}
       {hasMessages && (
         <span className="basis-full px-1 text-xs text-muted-foreground">
-          Integration is fixed for this session. Project remains the server working directory.
+          This chat already runs with{" "}
+          {config.runTarget ? getRunTargetLabel(config.runTarget) : "None"}. Project remains the
+          server working directory.
         </span>
       )}
       {hasMessages && (
@@ -265,7 +248,8 @@ export function SessionControls({
       )}
       {lockedNotice && (
         <span role="status" className="basis-full px-1 text-xs text-muted-foreground">
-          Integration is fixed for this session.{" "}
+          This chat still runs with{" "}
+          {config.runTarget ? getRunTargetLabel(config.runTarget) : "None"}.{" "}
           <button type="button" className="underline underline-offset-2" onClick={onNewSession}>
             Start a new session
           </button>{" "}

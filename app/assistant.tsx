@@ -6,36 +6,31 @@ import { AssistantChatTransport, useChatRuntime } from "@assistant-ui/ai-sdk";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { useCallback, useRef, useState } from "react";
 import { Thread } from "@/components/assistant-ui/elements/thread.aui";
-
-type IntegrationId =
-  | "openai:vercel-ai"
-  | "opencode:cli"
-  | "pi:cli"
-  | "codex:cli"
-  | "claude-code:cli"
-  | "github-copilot:cli";
+import { getRunTargetLabel, type RunTargetId } from "@/lib/run-target";
 
 type ChatSession = {
   id: string;
   title: string;
   projectName: string;
-  integration: IntegrationId | null;
+  runTarget: RunTargetId | null;
   agent?: string;
   model?: string;
-  integrationAutoSelected: boolean;
+  runTargetAutoSelected: boolean;
 };
 
 const createSession = (id: string, projectName: string, hasOpenAIKey: boolean): ChatSession => ({
   id,
   title: `chat ${id}`,
   projectName,
-  integration: hasOpenAIKey ? "openai:vercel-ai" : null,
-  integrationAutoSelected: hasOpenAIKey,
+  runTarget: hasOpenAIKey ? "openai:vercel-ai" : null,
+  runTargetAutoSelected: hasOpenAIKey,
 });
 
 const getSendDisabledReason = (session: ChatSession, hasOpenAIKey: boolean) => {
-  if (session.integration === null) return "Choose an integration to send a message.";
-  if (session.integration !== "openai:vercel-ai") return "This integration is not implemented yet.";
+  if (session.runTarget === null) return "Choose what should run this chat.";
+  if (session.runTarget !== "openai:vercel-ai") {
+    return `${getRunTargetLabel(session.runTarget)} is not available yet.`;
+  }
   if (!hasOpenAIKey) return "Configure OPENAI_API_KEY to send a message.";
   if (session.model) return "Model override is not wired yet.";
   return "";

@@ -11,3 +11,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun run models:check
+      - name: Explain model catalog failures
+        if: ${{ failure() }}
+        run: |
+          echo "Models check failed. PR owner: resolve model-catalog drift directly in this PR. Run bun run models:sync, review data/models.json and tier choices, then iterate until bun run models:check passes. Fix any other reported cause in this PR as well."

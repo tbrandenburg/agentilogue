@@ -9,6 +9,7 @@ import { TooltipIconButton } from "@/components/assistant-ui/elements/tooltip-ic
 import { Button } from "@/components/ui/button";
 import { SessionControls } from "@/components/assistant-ui/elements/session-controls";
 import { cn } from "@/lib/utils";
+import type { RunTargetId } from "@/lib/run-target";
 import {
   ActionBarMorePrimitive,
   ActionBarPrimitive,
@@ -77,15 +78,8 @@ type SessionConfig = {
   id: string;
   title: string;
   projectName: string;
-  integration:
-    | "openai:vercel-ai"
-    | "opencode:cli"
-    | "pi:cli"
-    | "codex:cli"
-    | "claude-code:cli"
-    | "github-copilot:cli"
-    | null;
-  integrationAutoSelected: boolean;
+  runTarget: RunTargetId | null;
+  runTargetAutoSelected: boolean;
   agent?: string;
   model?: string;
 };
