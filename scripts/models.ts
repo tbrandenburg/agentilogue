@@ -113,6 +113,32 @@ export function formatUnifiedDiff(before: string, after: string): string {
   ].join("\n");
 }
 
+type ModelChange = { lab: string; id: string };
+
+export function formatModelDriftSummary(
+  missing: readonly ModelChange[],
+  removed: readonly ModelChange[],
+): string {
+  const section = (title: string, changes: readonly ModelChange[]) => {
+    if (changes.length === 0) return [];
+
+    const byLab = new Map<string, string[]>();
+    for (const { lab, id } of changes) byLab.set(lab, [...(byLab.get(lab) ?? []), id]);
+
+    return [
+      `${title} (${changes.length}):`,
+      ...[...byLab].map(
+        ([lab, models]) => `  ${lab}:\n${models.map((model) => `    - ${model}`).join("\n")}`,
+      ),
+    ];
+  };
+
+  return [
+    ...section("Missing from data/models.json", missing),
+    ...section("No longer in models.dev", removed),
+  ].join("\n");
+}
+
 async function run() {
   const mode = process.argv[2];
   if (mode !== "check" && mode !== "sync") fail("Usage: bun scripts/models.ts <check|sync>");
@@ -137,20 +163,22 @@ async function run() {
     return;
   }
 
-  const changes = labs.flatMap((lab) => {
-    const additions = refreshed[lab].models
+  const missing = labs.flatMap((lab) =>
+    refreshed[lab].models
       .filter((id) => !local[lab].models.includes(id))
-      .map((id) => `  + ${lab}/${id}`);
-    const removals = local[lab].models
+      .map((id) => ({ lab, id })),
+  );
+  const removed = labs.flatMap((lab) =>
+    local[lab].models
       .filter((id) => !refreshed[lab].models.includes(id))
-      .map((id) => `  - ${lab}/${id}`);
-    return [...additions, ...removals];
-  });
-  if (changes.length > 0)
+      .map((id) => ({ lab, id })),
+  );
+  if (missing.length > 0 || removed.length > 0)
     fail(
       [
         "models.dev drift detected.",
-        ...changes,
+        "",
+        formatModelDriftSummary(missing, removed),
         "",
         "Unified diff for data/models.json:",
         formatUnifiedDiff(

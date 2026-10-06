@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import catalog from "../data/models.json";
-import { formatUnifiedDiff, getUpstreamModels } from "../scripts/models";
+import { formatModelDriftSummary, formatUnifiedDiff, getUpstreamModels } from "../scripts/models";
 
 const labs = [
   "openai",
@@ -82,6 +82,27 @@ describe("checked-in model suggestions", () => {
         '       "MiniMax-M2"',
         "     ]",
         "   }",
+      ].join("\n"),
+    );
+  });
+
+  it("groups missing and removed models by creator in the drift summary", () => {
+    assert.equal(
+      formatModelDriftSummary(
+        [
+          { lab: "minimax", id: "MiniMax-H3" },
+          { lab: "minimax", id: "MiniMax-M4" },
+        ],
+        [{ lab: "openai", id: "gpt-old" }],
+      ),
+      [
+        "Missing from data/models.json (2):",
+        "  minimax:",
+        "    - MiniMax-H3",
+        "    - MiniMax-M4",
+        "No longer in models.dev (1):",
+        "  openai:",
+        "    - gpt-old",
       ].join("\n"),
     );
   });
