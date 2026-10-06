@@ -19,6 +19,3 @@ export const runTargets: readonly RunTargetDefinition[] = [
   { id: "claude-code:cli", label: "claude code" },
   { id: "github-copilot:cli", label: "github copilot" },
 ];
-
-export const getRunTargetLabel = (id: RunTargetId): string =>
-  runTargets.find((runTarget) => runTarget.id === id)?.label ?? id;

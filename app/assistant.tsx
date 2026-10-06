@@ -1,10 +1,10 @@
 "use client";
 
-import { AssistantRuntimeProvider } from "@assistant-ui/react";
+import { AssistantRuntimeProvider, useAui } from "@assistant-ui/react";
 import { Tabs } from "@base-ui/react/tabs";
 import { AssistantChatTransport, useChatRuntime } from "@assistant-ui/ai-sdk";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Thread } from "@/components/assistant-ui/elements/thread.aui";
 import type { RunTargetId } from "@/lib/run-target";
 
@@ -13,6 +13,7 @@ type ChatSession = {
   title: string;
   projectName: string;
   runTarget: RunTargetId | null;
+  model?: string;
 };
 
 const createSession = (id: string, projectName: string, hasOpenAIKey: boolean): ChatSession => ({
@@ -20,6 +21,7 @@ const createSession = (id: string, projectName: string, hasOpenAIKey: boolean): 
   title: `chat ${id}`,
   projectName,
   runTarget: hasOpenAIKey ? "openai:vercel-ai" : null,
+  model: undefined,
 });
 
 type AssistantProps = { hasOpenAIKey: boolean; projectName: string };
@@ -153,6 +155,7 @@ const SessionRuntime = ({
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
+      <ModelContextBridge model={session.model} />
       <Thread
         session={session}
         hasOpenAIKey={hasOpenAIKey}
@@ -162,3 +165,16 @@ const SessionRuntime = ({
     </AssistantRuntimeProvider>
   );
 };
+
+function ModelContextBridge({ model }: { model?: string }) {
+  const aui = useAui();
+
+  useEffect(() => {
+    if (model === undefined) return;
+    return aui.modelContext.register({
+      getModelContext: () => ({ config: { modelName: model } }),
+    });
+  }, [aui, model]);
+
+  return null;
+}
