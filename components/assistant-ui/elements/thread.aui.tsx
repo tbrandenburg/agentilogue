@@ -79,6 +79,7 @@ type SessionConfig = {
   title: string;
   projectName: string;
   runTarget: RunTargetId | null;
+  model?: string;
 };
 
 export const Thread: FC<{
