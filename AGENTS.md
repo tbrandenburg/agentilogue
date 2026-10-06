@@ -76,3 +76,7 @@ For the first provider, the route should call the provider directly. Add a small
 7. Only then extract patterns for ACP, A2A, LangGraph, Eve, or other runtimes.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the current architecture notes.
+
+## Lessons Learned
+
+- 2026-10-06: Pitfall: Concurrent Next.js dev servers from one checkout share `.next` state and can reject the second server. Prevention: Run simultaneous app variants from separate worktrees and inspect startup logs before browser testing.
