@@ -299,6 +299,7 @@
   },
   "minimax": {
     "models": [
+      "MiniMax-H3",
       "MiniMax-M2",
       "MiniMax-M2-Her",
       "MiniMax-M2.1",
