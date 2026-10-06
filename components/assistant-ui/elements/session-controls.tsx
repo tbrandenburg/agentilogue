@@ -1,27 +1,20 @@
 "use client";
 
 import { Select } from "@base-ui/react/select";
-import { Popover } from "@base-ui/react/popover";
 import { CheckIcon, ChevronDownIcon } from "lucide-react";
-import { useState } from "react";
 import type { ReactNode } from "react";
 import models from "@/data/models.json";
-import { getRunTargetLabel, runTargets, type RunTargetId } from "@/lib/run-target";
+import { runTargets, type RunTargetId } from "@/lib/run-target";
+import { useAuiState } from "@assistant-ui/react";
 
 type Config = {
   projectName: string;
   runTarget: RunTargetId | null;
-  runTargetAutoSelected: boolean;
-  agent?: string;
-  model?: string;
 };
 type Props = {
   config: Config;
-  hasMessages: boolean;
   hasOpenAIKey: boolean;
-  sendDisabledReason: string;
   onChange: (patch: Partial<Config>) => void;
-  onNewSession: () => void;
 };
 
 const buttonClass =
@@ -35,7 +28,6 @@ function Picker({
   label,
   value,
   disabled,
-  disabledReason,
   children,
   formatValue,
   onValueChange,
@@ -43,22 +35,17 @@ function Picker({
   label: string;
   value: string;
   disabled?: boolean;
-  disabledReason?: string;
   children: ReactNode;
   formatValue: (value: string) => string;
-  onValueChange: (value: string) => void;
+  onValueChange?: (value: string) => void;
 }) {
   return (
     <Select.Root
       value={value}
-      onValueChange={(next) => onValueChange(next ?? "")}
+      onValueChange={(next) => onValueChange?.(next ?? "")}
       disabled={disabled}
     >
-      <Select.Trigger
-        className={buttonClass}
-        aria-label={label}
-        title={disabled ? (disabledReason ?? `${label} is unavailable`) : label}
-      >
+      <Select.Trigger className={buttonClass} aria-label={label}>
         <span className="truncate">
           {label} · <Select.Value>{(selected) => formatValue(String(selected ?? ""))}</Select.Value>
         </span>
@@ -94,174 +81,53 @@ function Option({
   );
 }
 
-export function SessionControls({
-  config,
-  hasMessages,
-  hasOpenAIKey,
-  sendDisabledReason,
-  onChange,
-  onNewSession,
-}: Props) {
-  const [lockedNotice, setLockedNotice] = useState(false);
-  const ready = config.runTarget === "openai:vercel-ai" && hasOpenAIKey;
-  const supported = config.runTarget === "openai:vercel-ai";
-  const agentDisabledReason = supported
-    ? "AI SDK · OpenAI does not expose named agents."
-    : "Agent selection is not available for this choice yet.";
-  const suggested = models.openai.tiers;
-  const modelOptions = Object.entries(suggested).filter(
+export function SessionControls({ config, hasOpenAIKey, onChange }: Props) {
+  const hasMessages = useAuiState((state) => state.thread.messages.length > 0);
+  const modelOptions = Object.entries(models.openai.tiers).filter(
     (entry): entry is [string, string] => typeof entry[1] === "string",
   );
 
   return (
-    <div
-      className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1"
-      aria-label="Session configuration"
-    >
-      <Popover.Root>
-        <Popover.Trigger className={buttonClass} title="Project settings">
-          <span className="truncate">Project · {config.projectName}</span>
-          <ChevronDownIcon className="size-3 shrink-0" />
-        </Popover.Trigger>
-        <Popover.Portal>
-          <Popover.Positioner className="z-50 outline-none" sideOffset={6}>
-            <Popover.Popup className={popupClass}>
-              <Popover.Title className="px-2.5 py-2 text-sm font-medium">
-                {config.projectName}
-              </Popover.Title>
-              <Popover.Description className="px-2.5 pb-2 text-xs text-muted-foreground">
-                This is the server working directory. Changing the project folder is not
-                implemented.
-              </Popover.Description>
-              <button
-                type="button"
-                disabled
-                className="w-full px-2.5 py-2 text-left text-sm text-muted-foreground"
-              >
-                Choose folder… · Not implemented
-              </button>
-            </Popover.Popup>
-          </Popover.Positioner>
-        </Popover.Portal>
-      </Popover.Root>
+    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1">
+      <span className="max-w-40 truncate px-1.5 py-1 text-xs text-muted-foreground">
+        Project · {config.projectName}
+      </span>
       <Picker
         label="Run with"
         value={config.runTarget ?? "none"}
+        disabled={hasMessages}
         formatValue={(value) =>
           value === "none"
             ? "None"
             : (runTargets.find((runTarget) => runTarget.id === value)?.label ?? value)
         }
-        onValueChange={(value) => {
-          if (hasMessages) {
-            setLockedNotice(true);
-            return;
-          }
-          onChange({
-            runTarget: value === "none" ? null : (value as RunTargetId),
-            runTargetAutoSelected: false,
-          });
-        }}
+        onValueChange={(value) =>
+          onChange({ runTarget: value === "none" ? null : (value as RunTargetId) })
+        }
       >
         <Option value="none">None</Option>
         {runTargets.map((runTarget) => (
-          <Option key={runTarget.id} value={runTarget.id}>
-            <span>{runTarget.label}</span>
-            <span className="ml-2 text-xs text-muted-foreground">
-              {runTarget.id === "openai:vercel-ai"
-                ? hasOpenAIKey
-                  ? "Ready"
-                  : "Missing API key"
-                : "Not available yet"}
-            </span>
+          <Option
+            key={runTarget.id}
+            value={runTarget.id}
+            disabled={runTarget.id === "openai:vercel-ai" ? !hasOpenAIKey : true}
+          >
+            {runTarget.label}
           </Option>
         ))}
       </Picker>
-      <Picker
-        label="Agent"
-        value={config.agent ?? "default"}
-        formatValue={(value) => (value === "default" ? "Default" : value)}
-        disabled
-        disabledReason={agentDisabledReason}
-        onValueChange={(value) => onChange({ agent: value === "default" ? undefined : value })}
-      >
-        <Option value="default">Default · no override</Option>
-        <Option value="unavailable" disabled>
-          Agent discovery not implemented
-        </Option>
+      <Picker label="Agent" value="default" disabled formatValue={() => "Default"}>
+        <Option value="default">Default</Option>
       </Picker>
-      <Picker
-        label="Model"
-        value={config.model ?? "default"}
-        formatValue={(value) => (value === "default" ? "Default" : value)}
-        disabled={!supported}
-        onValueChange={(value) => onChange({ model: value === "default" ? undefined : value })}
-      >
+      <Picker label="Model" value="default" formatValue={() => "Default"}>
         <Option value="default">Default · route model</Option>
         {modelOptions.map(([tier, model]) => (
-          <Option key={model} value={model}>
+          <Option key={model} value={model} disabled>
             {tier[0]?.toUpperCase()}
             {tier.slice(1)} · {model}
           </Option>
         ))}
       </Picker>
-      {config.runTarget === "openai:vercel-ai" && config.runTargetAutoSelected && hasOpenAIKey && (
-        <span className="px-1 text-[11px] text-muted-foreground">
-          AI SDK · OpenAI was selected automatically.
-        </span>
-      )}
-      {supported && (
-        <span className="basis-full px-1 text-xs text-muted-foreground">
-          Named agents are unavailable on OpenAI.
-        </span>
-      )}
-      {!supported && (
-        <span className="basis-full px-1 text-xs text-muted-foreground">
-          {agentDisabledReason} {sendDisabledReason}
-        </span>
-      )}
-      {supported && !ready && (
-        <span className="basis-full px-1 text-xs text-muted-foreground">
-          OPENAI_API_KEY is not configured.
-        </span>
-      )}
-      {config.model && (
-        <span className="basis-full px-1 text-xs text-muted-foreground">
-          Model override is not wired yet.
-        </span>
-      )}
-      {hasMessages && (
-        <span className="basis-full px-1 text-xs text-muted-foreground">
-          This chat already runs with{" "}
-          {config.runTarget ? getRunTargetLabel(config.runTarget) : "None"}. Project remains the
-          server working directory.
-        </span>
-      )}
-      {hasMessages && (
-        <button
-          type="button"
-          className="px-1 text-xs underline underline-offset-2"
-          onClick={onNewSession}
-        >
-          Start a new session
-        </button>
-      )}
-      {lockedNotice && (
-        <span role="status" className="basis-full px-1 text-xs text-muted-foreground">
-          This chat still runs with{" "}
-          {config.runTarget ? getRunTargetLabel(config.runTarget) : "None"}.{" "}
-          <button type="button" className="underline underline-offset-2" onClick={onNewSession}>
-            Start a new session
-          </button>{" "}
-          <button
-            type="button"
-            className="underline underline-offset-2"
-            onClick={() => setLockedNotice(false)}
-          >
-            Cancel
-          </button>
-        </span>
-      )}
     </div>
   );
 }
