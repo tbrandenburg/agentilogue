@@ -79,6 +79,40 @@ export function getUpstreamModels(upstream: Record<string, unknown>, lab: Lab): 
   return ids.sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
 }
 
+export function formatUnifiedDiff(before: string, after: string): string {
+  const beforeLines = before.replace(/\n$/, "").split("\n");
+  const afterLines = after.replace(/\n$/, "").split("\n");
+  let prefix = 0;
+  while (prefix < beforeLines.length && prefix < afterLines.length) {
+    if (beforeLines[prefix] !== afterLines[prefix]) break;
+    prefix++;
+  }
+
+  let beforeEnd = beforeLines.length;
+  let afterEnd = afterLines.length;
+  while (beforeEnd > prefix && afterEnd > prefix) {
+    if (beforeLines[beforeEnd - 1] !== afterLines[afterEnd - 1]) break;
+    beforeEnd--;
+    afterEnd--;
+  }
+
+  const contextStart = Math.max(0, prefix - 3);
+  const suffixContext = Math.min(3, beforeLines.length - beforeEnd, afterLines.length - afterEnd);
+  const oldCount = beforeEnd - contextStart + suffixContext;
+  const newCount = afterEnd - contextStart + suffixContext;
+
+  return [
+    "diff --git a/data/models.json b/data/models.json",
+    "--- a/data/models.json",
+    "+++ b/data/models.json",
+    `@@ -${contextStart + 1},${oldCount} +${contextStart + 1},${newCount} @@`,
+    ...beforeLines.slice(contextStart, prefix).map((line) => ` ${line}`),
+    ...beforeLines.slice(prefix, beforeEnd).map((line) => `-${line}`),
+    ...afterLines.slice(prefix, afterEnd).map((line) => `+${line}`),
+    ...beforeLines.slice(beforeEnd, beforeEnd + suffixContext).map((line) => ` ${line}`),
+  ].join("\n");
+}
+
 async function run() {
   const mode = process.argv[2];
   if (mode !== "check" && mode !== "sync") fail("Usage: bun scripts/models.ts <check|sync>");
@@ -114,7 +148,18 @@ async function run() {
   });
   if (changes.length > 0)
     fail(
-      `models.dev drift detected.\n\n${changes.join("\n")}\n\nRun:\n  bun run models:sync\n\nThen review the diff and adjust small / medium / large if appropriate.`,
+      [
+        "models.dev drift detected.",
+        ...changes,
+        "",
+        "Unified diff for data/models.json:",
+        formatUnifiedDiff(
+          `${JSON.stringify(local, null, 2)}\n`,
+          `${JSON.stringify(refreshed, null, 2)}\n`,
+        ),
+        "",
+        "Run bun run models:sync to apply the catalog update, then review tier choices and confirm bun run models:check passes.",
+      ].join("\n"),
     );
   console.info("Model catalog matches models.dev.");
 }
