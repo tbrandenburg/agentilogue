@@ -1,11 +1,16 @@
 "use client";
 
-import { AssistantRuntimeProvider, useAui } from "@assistant-ui/react";
+import { AssistantRuntimeProvider, useAui, useAuiState } from "@assistant-ui/react";
 import { Tabs } from "@base-ui/react/tabs";
 import { AssistantChatTransport, useChatRuntime } from "@assistant-ui/ai-sdk";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Thread } from "@/components/assistant-ui/elements/thread.aui";
+import type { ThreadComponents } from "@/components/assistant-ui/elements/thread.aui";
+import {
+  AgentilogueSessionControlsSlot,
+  SessionControlsProvider,
+} from "@/components/assistant-ui/elements/session-controls-slot";
 import type { RunTargetId } from "@/lib/run-target";
 
 type ChatSession = {
@@ -14,6 +19,10 @@ type ChatSession = {
   projectName: string;
   runTarget: RunTargetId | null;
   model?: string;
+};
+
+const THREAD_COMPONENTS: ThreadComponents = {
+  ComposerActionLeft: AgentilogueSessionControlsSlot,
 };
 
 const createSession = (id: string, projectName: string, hasOpenAIKey: boolean): ChatSession => ({
@@ -116,6 +125,7 @@ export const Assistant = ({ hasOpenAIKey, projectName }: AssistantProps) => {
               <SessionRuntime
                 session={session}
                 hasOpenAIKey={hasOpenAIKey}
+                isActive={activeId === session.id}
                 onUpdate={(update) => updateSession(session.id, update)}
                 onRunningChange={updateRunning}
               />
@@ -130,6 +140,7 @@ export const Assistant = ({ hasOpenAIKey, projectName }: AssistantProps) => {
 type SessionRuntimeProps = {
   session: ChatSession;
   hasOpenAIKey: boolean;
+  isActive: boolean;
   onUpdate: (update: Partial<ChatSession>) => void;
   onRunningChange: (id: string, running: boolean) => void;
 };
@@ -137,6 +148,7 @@ type SessionRuntimeProps = {
 const SessionRuntime = ({
   session,
   hasOpenAIKey,
+  isActive,
   onUpdate,
   onRunningChange,
 }: SessionRuntimeProps) => {
@@ -156,15 +168,23 @@ const SessionRuntime = ({
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <ModelContextBridge model={session.model} />
-      <Thread
-        session={session}
-        hasOpenAIKey={hasOpenAIKey}
-        onUpdate={onUpdate}
-        onRunningChange={reportRunning}
-      />
+      <RunningStateReporter onRunningChange={reportRunning} />
+      <SessionControlsProvider config={session} hasOpenAIKey={hasOpenAIKey} onChange={onUpdate}>
+        <Thread components={THREAD_COMPONENTS} autoFocus={isActive} />
+      </SessionControlsProvider>
     </AssistantRuntimeProvider>
   );
 };
+
+function RunningStateReporter({
+  onRunningChange,
+}: {
+  onRunningChange: (running: boolean) => void;
+}) {
+  const isRunning = useAuiState((state) => state.thread.isRunning);
+  useEffect(() => onRunningChange(isRunning), [isRunning, onRunningChange]);
+  return null;
+}
 
 function ModelContextBridge({ model }: { model?: string }) {
   const aui = useAui();
