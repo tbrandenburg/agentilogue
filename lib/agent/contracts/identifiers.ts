@@ -1,6 +1,7 @@
 /**
  * Distinct IDs protect internal call sites from accidental substitution.
  * Branded types are erased at runtime: validate JSON with these schemas.
+ * A valid ID does not authorize a caller to control its run or session.
  *
  * RunId and PermissionId are issued by this server; ConversationId is
  * correlated to a server-owned conversation; ProviderSessionId is opaque.
