@@ -1,4 +1,5 @@
-import { describe, expect, test } from "bun:test";
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
 import {
   AgentCapabilitiesSchema,
   AgentControlBodySchema,
@@ -17,12 +18,12 @@ const validStart = {
 } as const;
 
 describe("application HTTP contract", () => {
-  test("accepts a valid start without minting a run ID in the browser", () => {
-    expect(StartAgentRunBodySchema.parse(validStart)).toEqual(validStart);
-    expect(StartAgentRunReceiptSchema.parse({ status: "accepted", runId }).runId).toBe(runId);
+  it("accepts a valid start without minting a run ID in the browser", () => {
+    assert.deepEqual(StartAgentRunBodySchema.parse(validStart), validStart);
+    assert.equal(StartAgentRunReceiptSchema.parse({ status: "accepted", runId }).runId, runId);
   });
 
-  test("rejects malformed bodies and fields not owned by the caller", () => {
+  it("rejects malformed bodies and fields not owned by the caller", () => {
     for (const value of [
       { ...validStart, runId },
       { ...validStart, providerSessionId: "foreign" },
@@ -31,57 +32,86 @@ describe("application HTTP contract", () => {
       { ...validStart, credentials: "secret" },
       { ...validStart, input: [] },
       { ...validStart, input: [{ type: "text", text: "" }] },
-      { ...validStart, input: [{ type: "file", fileId: "x", mimeType: "text/plain", path: "/etc/passwd" }] },
+      {
+        ...validStart,
+        input: [{ type: "file", fileId: "x", mimeType: "text/plain", path: "/etc/passwd" }],
+      },
       { ...validStart, conversationId: "../escape" },
     ]) {
-      expect(StartAgentRunBodySchema.safeParse(value).success).toBe(false);
+      assert.equal(StartAgentRunBodySchema.safeParse(value).success, false);
     }
   });
 
-  test("parses a separate cancel control and its nonterminal dispatch receipt", () => {
-    expect(
+  it("parses a separate cancel control and its nonterminal dispatch receipt", () => {
+    assert.equal(
       AgentControlBodySchema.parse({ kind: "cancel", runId, conversationId: "thread-1" }).kind,
-    ).toBe("cancel");
-    expect(AgentControlReceiptSchema.parse({ kind: "cancel", receipt: "dispatched" })).toEqual({
+      "cancel",
+    );
+    assert.deepEqual(AgentControlReceiptSchema.parse({ kind: "cancel", receipt: "dispatched" }), {
       kind: "cancel",
       receipt: "dispatched",
     });
-    expect(
+    assert.equal(
       AgentControlReceiptSchema.safeParse({ kind: "cancel", receipt: "cancelled" }).success,
-    ).toBe(false);
+      false,
+    );
   });
 
-  test("requires a correlated permission decision and rejects stale-looking shapes", () => {
+  it("requires a correlated permission decision and rejects invalid shapes", () => {
     const body = {
       kind: "permission.respond",
       runId,
       conversationId: "thread-1",
       decision: { permissionId, optionId: "allow-once" },
     } as const;
-    expect(AgentControlBodySchema.parse(body)).toEqual(body);
-    expect(AgentControlBodySchema.safeParse({ ...body, decision: { optionId: "allow-once" } }).success).toBe(false);
-    expect(AgentControlBodySchema.safeParse({ ...body, decision: { ...body.decision, optionId: "" } }).success).toBe(false);
-    expect(AgentControlBodySchema.safeParse({ ...body, conversationId: "thread-2", extra: true }).success).toBe(false);
+    assert.deepEqual(AgentControlBodySchema.parse(body), body);
+    assert.equal(
+      AgentControlBodySchema.safeParse({ ...body, decision: { optionId: "allow-once" } }).success,
+      false,
+    );
+    assert.equal(
+      AgentControlBodySchema.safeParse({ ...body, decision: { ...body.decision, optionId: "" } })
+        .success,
+      false,
+    );
+    assert.equal(
+      AgentControlBodySchema.safeParse({ ...body, conversationId: "thread-2", extra: true })
+        .success,
+      false,
+    );
   });
 });
 
 describe("internal provider contract", () => {
-  test("capabilities distinguish cold reattach from same-process reconnect", () => {
+  it("capabilities distinguish cold reattach from same-process reconnect", () => {
     const capability = {
       input: { text: true, files: false },
       interactions: { permissions: true, questions: false },
-      session: { continuation: true, coldReattach: false, modelSelection: false, agentSelection: false },
-      observation: { live: true, reconnect: "same-process", toolUpdates: true, reasoning: false },
+      session: {
+        continuation: true,
+        coldReattach: false,
+        modelSelection: false,
+        agentSelection: false,
+      },
+      observation: {
+        live: true,
+        reconnect: "same-process",
+        toolUpdates: true,
+        reasoning: false,
+      },
       cancellation: true,
     };
-    expect(AgentCapabilitiesSchema.parse(capability)).toEqual(capability);
-    expect(AgentCapabilitiesSchema.safeParse({
-      ...capability,
-      observation: { ...capability.observation, reconnect: "forever" },
-    }).success).toBe(false);
+    assert.deepEqual(AgentCapabilitiesSchema.parse(capability), capability);
+    assert.equal(
+      AgentCapabilitiesSchema.safeParse({
+        ...capability,
+        observation: { ...capability.observation, reconnect: "forever" },
+      }).success,
+      false,
+    );
   });
 
-  test("permission options have unique native option IDs and a local correlation ID", () => {
+  it("permission options have unique native option IDs and a local correlation ID", () => {
     const permission = {
       id: permissionId,
       title: "Write a file",
@@ -90,29 +120,41 @@ describe("internal provider contract", () => {
         { id: "deny", label: "Deny", intent: "deny" },
       ],
     } as const;
-    expect(PermissionRequestSchema.parse(permission)).toEqual(permission);
-    expect(PermissionRequestSchema.safeParse({
-      ...permission,
-      options: [permission.options[0], permission.options[0]],
-    }).success).toBe(false);
+    assert.deepEqual(PermissionRequestSchema.parse(permission), permission);
+    assert.equal(
+      PermissionRequestSchema.safeParse({
+        ...permission,
+        options: [permission.options[0], permission.options[0]],
+      }).success,
+      false,
+    );
   });
 
-  test("never embeds native SDK events or opaque tool execution payloads", () => {
-    expect(AgentRunEventSchema.parse({
-      type: "message.delta",
-      messageId: "msg-1",
-      channel: "assistant",
-      text: "Hello",
-    }).type).toBe("message.delta");
-    expect(AgentRunEventSchema.safeParse({
-      type: "tool.updated",
-      toolCallId: "tool-1",
-      status: "running",
-      nativePayload: { cmd: "rm -rf /" },
-    }).success).toBe(false);
-    expect(AgentRunEventSchema.safeParse({
-      type: "run.finished",
-      outcome: { kind: "unknown", message: "Lost native process" },
-    }).success).toBe(true);
+  it("never embeds native SDK events or opaque tool execution payloads", () => {
+    assert.equal(
+      AgentRunEventSchema.parse({
+        type: "message.delta",
+        messageId: "msg-1",
+        channel: "assistant",
+        text: "Hello",
+      }).type,
+      "message.delta",
+    );
+    assert.equal(
+      AgentRunEventSchema.safeParse({
+        type: "tool.updated",
+        toolCallId: "tool-1",
+        status: "running",
+        nativePayload: { cmd: "rm -rf /" },
+      }).success,
+      false,
+    );
+    assert.equal(
+      AgentRunEventSchema.safeParse({
+        type: "run.finished",
+        outcome: { kind: "unknown", message: "Lost native process" },
+      }).success,
+      true,
+    );
   });
 });
