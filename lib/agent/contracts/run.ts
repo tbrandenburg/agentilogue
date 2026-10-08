@@ -77,11 +77,26 @@ export const PermissionDecisionSchema = z.strictObject({
 });
 export type PermissionDecision = Readonly<z.infer<typeof PermissionDecisionSchema>>;
 
+const SuccessOutcomeSchema = z.strictObject({ kind: z.literal("success") });
+const CancelledOutcomeSchema = z.strictObject({ kind: z.literal("cancelled") });
+const FailedOutcomeSchema = z.strictObject({
+  kind: z.literal("failed"),
+  message: z.string().min(1).max(2048),
+});
+const UnknownOutcomeSchema = z.strictObject({
+  kind: z.literal("unknown"),
+  message: z.string().min(1).max(2048),
+});
+const ConfirmedOutcomeSchema = z.discriminatedUnion("kind", [
+  SuccessOutcomeSchema,
+  CancelledOutcomeSchema,
+  FailedOutcomeSchema,
+]);
 export const RunOutcomeSchema = z.discriminatedUnion("kind", [
-  z.strictObject({ kind: z.literal("success") }),
-  z.strictObject({ kind: z.literal("cancelled") }),
-  z.strictObject({ kind: z.literal("failed"), message: z.string().min(1).max(2048) }),
-  z.strictObject({ kind: z.literal("unknown"), message: z.string().min(1).max(2048) }),
+  SuccessOutcomeSchema,
+  CancelledOutcomeSchema,
+  FailedOutcomeSchema,
+  UnknownOutcomeSchema,
 ]);
 export type RunOutcome = Readonly<z.infer<typeof RunOutcomeSchema>>;
 
@@ -113,35 +128,55 @@ export const AgentRunEventSchema = z.discriminatedUnion("type", [
 ]);
 export type AgentRunEvent = Readonly<z.infer<typeof AgentRunEventSchema>>;
 
-export interface RunMessage {
-  readonly id: z.infer<typeof MessageIdSchema>;
-  readonly channel: "assistant" | "reasoning";
-  readonly text: string;
-}
+export const RunMessageSchema = z.strictObject({
+  id: MessageIdSchema,
+  channel: z.enum(["assistant", "reasoning"]),
+  text: z.string(),
+});
+export type RunMessage = Readonly<z.infer<typeof RunMessageSchema>>;
 
-export interface RunTool {
-  readonly id: z.infer<typeof ToolCallIdSchema>;
-  readonly title?: string;
-  readonly status?: ToolStatus;
-  readonly summary?: string;
-}
+export const RunToolSchema = z.strictObject({
+  id: ToolCallIdSchema,
+  title: z.string().max(1024).optional(),
+  status: ToolStatusSchema.optional(),
+  summary: z.string().max(8192).optional(),
+});
+export type RunTool = Readonly<z.infer<typeof RunToolSchema>>;
 
 /** Materialized state through lastSequence, NOT an unbounded event log. */
-export interface RunSnapshot {
-  readonly runId: z.infer<typeof RunIdSchema>;
-  readonly conversationId: z.infer<typeof ConversationIdSchema>;
-  readonly providerSessionId?: z.infer<typeof ProviderSessionIdSchema>;
-  readonly phase: "running" | "finished" | "unknown";
-  readonly lastSequence: number;
-  readonly messages: readonly RunMessage[];
-  readonly tools: readonly RunTool[];
-  readonly pendingPermissions: readonly PermissionRequest[];
-  readonly outcome?: RunOutcome;
-}
+const SnapshotBaseSchema = z.strictObject({
+  runId: RunIdSchema,
+  conversationId: ConversationIdSchema,
+  providerSessionId: ProviderSessionIdSchema.optional(),
+  lastSequence: z.number().int().nonnegative(),
+  messages: z.array(RunMessageSchema),
+  tools: z.array(RunToolSchema),
+  pendingPermissions: z.array(PermissionRequestSchema),
+});
 
-export type RunObservation =
-  | { readonly type: "snapshot"; readonly snapshot: RunSnapshot }
-  | { readonly type: "event"; readonly sequence: number; readonly event: AgentRunEvent };
+/** Running snapshots have no outcome; terminal/unknown states require one. */
+export const RunSnapshotSchema = z.discriminatedUnion("phase", [
+  SnapshotBaseSchema.extend({ phase: z.literal("running") }),
+  SnapshotBaseSchema.extend({
+    phase: z.literal("finished"),
+    outcome: ConfirmedOutcomeSchema,
+  }),
+  SnapshotBaseSchema.extend({
+    phase: z.literal("unknown"),
+    outcome: UnknownOutcomeSchema,
+  }),
+]);
+export type RunSnapshot = Readonly<z.infer<typeof RunSnapshotSchema>>;
+
+export const RunObservationSchema = z.discriminatedUnion("type", [
+  z.strictObject({ type: z.literal("snapshot"), snapshot: RunSnapshotSchema }),
+  z.strictObject({
+    type: z.literal("event"),
+    sequence: z.number().int().positive(),
+    event: AgentRunEventSchema,
+  }),
+]);
+export type RunObservation = Readonly<z.infer<typeof RunObservationSchema>>;
 
 /** A local control receipt is not a native terminal outcome. */
 export type ControlReceipt = "dispatched" | "already-ended";
