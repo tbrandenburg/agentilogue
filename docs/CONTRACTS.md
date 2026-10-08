@@ -1,0 +1,53 @@
+# Agent integration contracts
+
+This document is the repository's contract for the provider-neutral agent path. It records stable boundaries and behavior so frontend and backend work can proceed without inventing incompatible interfaces. It does not claim that `/api/agent` or an OpenCode adapter has been implemented. [ARCHITECTURE.md](ARCHITECTURE.md) explains the wider product architecture; where its illustrative provider method differs from this document, this document governs contract decisions.
+
+The existing AI SDK `/api/chat` path remains supported. A dedicated integration may also use assistant-ui directly without passing through `AgentProvider`.
+
+## Contract status
+
+**Locked** means preserve the named boundary or behavioral invariant across the first implementations. A change requires a deliberate update to this document with evidence from a real integration. **Open** means the exact TypeScript signature, wire shape, and mapping may change during OpenCode validation. Neither term claims a public or stable package API.
+
+| Primary boundary | Ownership and origin | Locked | Open |
+| --- | --- | --- | --- |
+| `AssistantRuntime` / `ExternalStoreRuntime` | assistant-ui | Consume its maintained interface unchanged. | Which runtime adapter serves an agent integration. |
+| `AssistantTransport` **or** `useAgUiRuntime` + `HttpAgent` | assistant-ui and AG-UI | Consume the selected maintained interface unchanged; do not invent another browser transport. | Path selection and mapping from native events, including live permission handling. |
+| `/api/agent` | agentilogue, informed by native control and observation APIs | Server owns run addressing, observation, authorization, and controls independent of a browser stream. | URL layout, HTTP methods, request/response bodies, reconnect behavior. |
+| `AgentProvider` | agentilogue's architecture; Archon provider boundary; node-red-agents lifecycle | Name, UI-independent responsibility, run ownership, admission, observation, control, and truthful capabilities. | Exact `start`/`observe`/`cancel`/interaction signatures and result types. |
+| Native agent protocol | ACP or OpenCode serve/SDK for the first integration | Use maintained upstream types and pin the actual protocol/package version used by an adapter. | Whether ACP carries the required OpenCode behavior or a native serve/SDK adapter is needed. |
+
+The upstream interface is proven by its own implementation; an agentilogue adapter is proven only when tested against the configured native agent and browser runtime. The browser path and native protocol are choices within these boundaries, not extra agentilogue abstractions.
+
+## `AgentProvider` responsibilities
+
+One configured provider can be called directly by the route. It must describe the capabilities of **this adapter and integration mode**, admit a run before completion, keep enough ownership to observe and control the run independently of the browser response, and translate native outcomes truthfully. An in-memory run handle may implement this internally; it is not a required public interface. The provider domain must not import assistant-ui types.
+
+The conceptual operations are **describe**, **start**, **observe**, **cancel**, and **respond to a pending interaction**. Their exact method names, argument lists, and return types remain open; the name `AgentProvider` and the responsibilities above are the contract.
+
+An adapter without native interaction support must report that limitation. The route must authenticate the caller and authorize the project and run for observation and control; a browser-supplied `conversationId` alone does not establish ownership. Working directory, executable, environment, and credentials are resolved or validated on the server.
+
+No `AgentService`, `AgentRegistry`, plugin framework, generic subprocess runtime, or extra frontend transport is part of this contract. Add selection machinery when a second concrete provider needs it.
+
+## Secondary contracts: stable meaning, adaptable shape
+
+Secondary types support the primary boundaries. Keep the following meaning stable while leaving fields and type placement open to native evidence:
+
+| Candidate names | Invariant to preserve | Open shape |
+| --- | --- | --- |
+| `StartRunRequest`, `RunBinding`; `RunId`, `ConversationId`, `ProviderSessionId` | A UI conversation, one admitted run, and an opaque native session/context have distinct identities and lifetimes. A native task ID is distinct again. Admission is separate from completion. | ID representation, allocation, retry, input parts, and the time a native ID becomes known. |
+| `AgentCapabilities` | Describe what the configured adapter actually supports. Continuation, cold reattachment, live observation, and durable replay are distinct claims. | Field names, richer feature levels, and discovery method. |
+| `RunSnapshot`, sequenced observations | Observation has an explicit current state and an ordering boundary; gaps and replay limits are visible. Unsubscribing the browser does not stop native work. | Event envelope, storage, reconnect, and multi-client behavior. |
+| Native events; optional private `AgentEvent` | Preserve stable message, part, tool-call, and interaction IDs. Distinguish deltas from replacing snapshots. Provider-owned tools are displayed, not re-executed by the UI. | Any app-specific event union; prefer official ACP, A2A, and AG-UI schemas at their respective edges. |
+| `Interaction`, `Permission`, `InteractionResponse` | Answer the pending native request with one offered option; reject stale, foreign, duplicate, or unknown responses. Questions and permissions have different semantics. | Shared response types and optional question fields. |
+| `ControlReceipt`, outcome/terminal state | A cancel receipt is not proof that work stopped. Success, confirmed cancellation, failure, and unknown native state must not be conflated. | Status union and child-work settlement representation. |
+| History, export, model/agent discovery, commands | Preserve native features through optional adapter capabilities where needed. | No common signatures until a second real implementation needs the same operation. |
+
+Use ACP session updates at the provider edge and the selected assistant-ui/AG-UI transport at the browser edge. A private normalized observation may connect them; it is not another published protocol. A2A is an optional remote-agent adapter with its own task/context lifecycle, not the mandatory local coding-agent model. MCP remains a tool/resource boundary.
+
+## Validation before freezing signatures
+
+The first real proof is OpenCode through a pinned ACP version. Exercise text updates, tool calls/results, permissions that block an active prompt, independent cancellation, sessions, process loss, and two UI conversations. Compare OpenCode serve/SDK if ACP cannot preserve a required native behavior. Then challenge the same provider responsibilities with another coding agent before treating exact app-owned signatures as stable.
+
+For each capability, record native evidence and an end-to-end browser result before advertising support. In particular, a successful test must demonstrate that a permission answer reaches the waiting native run; a cancellation receipt is followed by observed terminal evidence or an explicit unknown state; and message replacement cannot duplicate or erase transcript content. The browser path must use the official assistant-ui integration without changing its owned interfaces.
+
+Change this document when those proofs require a different **boundary or invariant**. Routine field and mapping changes within an open contract need code review and tests, but do not require treating this document as an experiment log. Keep fixtures, research notes, and implementation plans in their respective PRs or issues; create `.agents/plans/` material only for a plan that genuinely benefits from being versioned in the repository.
