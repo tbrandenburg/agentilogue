@@ -5,6 +5,8 @@ import {
   AgentControlBodySchema,
   AgentControlReceiptSchema,
   AgentRunEventSchema,
+  RunSnapshotSchema,
+  RunObservationSchema,
   PermissionRequestSchema,
   StartAgentRunBodySchema,
   StartAgentRunReceiptSchema,
@@ -125,6 +127,58 @@ describe("internal provider contract", () => {
       PermissionRequestSchema.safeParse({
         ...permission,
         options: [permission.options[0], permission.options[0]],
+      }).success,
+      false,
+    );
+  });
+
+  it("requires coherent materialized snapshot phases and contiguous-ready cursors", () => {
+    const running = {
+      runId,
+      conversationId: "thread-1",
+      phase: "running",
+      lastSequence: 0,
+      messages: [],
+      tools: [],
+      pendingPermissions: [],
+    };
+    assert.equal(RunSnapshotSchema.safeParse(running).success, true);
+    assert.equal(
+      RunSnapshotSchema.safeParse({ ...running, outcome: { kind: "success" } }).success,
+      false,
+    );
+    assert.equal(
+      RunSnapshotSchema.safeParse({ ...running, phase: "finished" }).success,
+      false,
+    );
+    assert.equal(
+      RunSnapshotSchema.safeParse({
+        ...running,
+        phase: "finished",
+        outcome: { kind: "unknown", message: "Lost native agent" },
+      }).success,
+      false,
+    );
+    assert.equal(
+      RunSnapshotSchema.safeParse({
+        ...running,
+        phase: "unknown",
+        outcome: { kind: "unknown", message: "Lost native agent" },
+      }).success,
+      true,
+    );
+    assert.equal(
+      RunObservationSchema.safeParse({
+        type: "snapshot",
+        snapshot: running,
+      }).success,
+      true,
+    );
+    assert.equal(
+      RunObservationSchema.safeParse({
+        type: "event",
+        sequence: -1,
+        event: { type: "run.finished", outcome: { kind: "success" } },
       }).success,
       false,
     );
