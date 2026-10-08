@@ -5,7 +5,7 @@
  * or AG-UI transport protocol instead.
  */
 import { z } from "zod";
-import { ConversationIdSchema, ProviderSessionIdSchema, RunIdSchema } from "./identifiers";
+import { ConversationIdSchema, RunIdSchema } from "./identifiers";
 import { AgentInputSchema, PermissionDecisionSchema } from "./run";
 
 export const StartAgentRunBodySchema = z.strictObject({
@@ -20,7 +20,6 @@ export type StartAgentRunBody = z.infer<typeof StartAgentRunBodySchema>;
 export const StartAgentRunReceiptSchema = z.strictObject({
   status: z.literal("accepted"),
   runId: RunIdSchema,
-  providerSessionId: ProviderSessionIdSchema.optional(),
 });
 export type StartAgentRunReceipt = z.infer<typeof StartAgentRunReceiptSchema>;
 
