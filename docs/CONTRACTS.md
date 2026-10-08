@@ -38,7 +38,7 @@ interface AgentProvider<TNativeEvent> {
 }
 ```
 
-The linked module defines every supporting type shown here: distinct IDs, request and admission, capabilities, gap-aware observations, pending permission, outcome, and local control receipt. Its generic native event parameter keeps official ACP/OpenCode update types at the provider edge instead of publishing a copied `AgentEvent` vocabulary. Its snapshot event list is an in-memory candidate, **not** a promise of durable replay. Questions, history, and subagents have no common coded response contract yet and must not be advertised as implemented.
+The linked module defines every supporting type shown here: distinct IDs, request and admission, capabilities, gap-aware observations, pending permission, outcome, and local control receipt. Its generic native event parameter keeps official ACP/OpenCode update types **inside the server** instead of publishing a copied `AgentEvent` vocabulary; `/api/agent` must project only vetted display/control fields, never serialize an opaque native payload directly. Its snapshot event list is an in-memory candidate, **not** a promise of durable replay. Questions, history, and subagents have no common coded response contract yet and must not be advertised as implemented.
 
 The module is a **type-checked research candidate**, not a production implementation or a frozen public API. `describe`/`start`/`observe`/control method names, fields, and event envelope may change with the real OpenCode proof. The locked decision is one UI-independent `AgentProvider` boundary with the semantics above. Do not duplicate these app-owned definitions elsewhere in the repository.
 
