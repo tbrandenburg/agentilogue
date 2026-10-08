@@ -147,10 +147,7 @@ describe("internal provider contract", () => {
       RunSnapshotSchema.safeParse({ ...running, outcome: { kind: "success" } }).success,
       false,
     );
-    assert.equal(
-      RunSnapshotSchema.safeParse({ ...running, phase: "finished" }).success,
-      false,
-    );
+    assert.equal(RunSnapshotSchema.safeParse({ ...running, phase: "finished" }).success, false);
     assert.equal(
       RunSnapshotSchema.safeParse({
         ...running,
