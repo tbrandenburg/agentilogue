@@ -12,7 +12,8 @@
     "test": "bun test --pass-with-no-tests",
     "models:check": "bun scripts/models.ts check",
     "models:sync": "bun scripts/models.ts sync",
-    "lint:fix": "oxlint --fix && oxfmt"
+    "lint:fix": "oxlint --fix && oxfmt",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.66",
