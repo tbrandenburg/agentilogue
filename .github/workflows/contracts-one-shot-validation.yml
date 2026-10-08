@@ -1,20 +1,20 @@
 name: One-shot contract module validation
 on:
-  push:
-    branches:
-      - docs/agent-contracts
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: write
 
 jobs:
   validate-and-commit:
-    if: github.repository == 'tbrandenburg/agentilogue' && github.ref == 'refs/heads/docs/agent-contracts'
+    if: github.repository == 'tbrandenburg/agentilogue' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'docs/agent-contracts'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: docs/agent-contracts
           persist-credentials: true
       - uses: oven-sh/setup-bun@v2
       - name: Install runtime schema dependency, format and verify
