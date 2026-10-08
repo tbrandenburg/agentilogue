@@ -18,6 +18,22 @@ The existing AI SDK `/api/chat` path remains supported. A dedicated integration 
 
 The upstream interface is proven by its own implementation; an agentilogue adapter is proven only when tested against the configured native agent and browser runtime. The browser path and native protocol are choices within these boundaries, not extra agentilogue abstractions.
 
+## Where the actual interfaces live
+
+The five primary boundaries do **not** imply five new interface files. For maintained upstream interfaces, their package declarations are authoritative; AGENTILOGUE only supplies adapters.
+
+| Boundary | Source of truth | AGENTILOGUE code or next proof |
+| --- | --- | --- |
+| assistant-ui runtime | [`AssistantRuntime` and runtime hooks](https://www.assistant-ui.com/docs/api-reference/context-providers/assistant-runtime-provider), [`ExternalStoreRuntime`](https://www.assistant-ui.com/docs/runtimes/custom/external-store) from `@assistant-ui/react` | Use the installed public types directly; do not duplicate or patch them. |
+| Browser transport | [`useAssistantTransportRuntime` / AssistantTransport](https://www.assistant-ui.com/docs/runtimes/custom/assistant-transport) or [official AG-UI runtime](https://www.assistant-ui.com/docs/runtimes/ag-ui/overview) | Choose and configure one maintained path in the browser implementation issue. Its wire encoding and state projector are *not* defined by `AgentProvider`. |
+| App API `/api/agent` | **[Candidate start/control request and receipt types](../lib/agent/api-contracts.ts)** | App-owned; exact paths, verbs, validation, streaming response and reconnect policy remain open. The streaming format comes from the selected maintained transport, not a new `AgentEvent` JSON protocol. |
+| Server `AgentProvider` | **[Candidate TypeScript interface and supporting types](../lib/agent/contracts.ts)** | App-owned; only the name, separation and lifecycle invariants are locked. |
+| Native ACP or OpenCode serve | [ACP TypeScript SDK](https://github.com/agentclientprotocol/typescript-sdk) (`@agentclientprotocol/sdk`, stable ACP v1 entry point) or [OpenCode serve](https://opencode.ai/docs/server/) | Import version-pinned SDK types into the adapter. Do not duplicate `SessionUpdate`, session methods or permission request definitions. New ACP SDK code should follow its current [client app API](https://github.com/agentclientprotocol/typescript-sdk), not assume older `ClientSideConnection` examples remain preferred. |
+
+The app-owned **secondary** types `AgentInput`, `StartRunRequest`, `RunBinding`, `RunId`, `ConversationId`, `ProviderSessionId`, `AgentCapabilities`, `PermissionRequest`, `InteractionResponse`, `ControlReceipt`, `AgentObservation` and `RunOutcome` are all in [`lib/agent/contracts.ts`](../lib/agent/contracts.ts). The app-facing candidate `StartAgentRunBody`, `StartAgentRunReceipt`, `AgentControlBody` and `AgentControlReceipt` live in [`lib/agent/api-contracts.ts`](../lib/agent/api-contracts.ts). Do not maintain competing definitions in documentation.
+
+**Important limitation:** these TypeScript payloads are compile-time candidates, **not** runtime input validators or finalized HTTP routes. The browser must never supply executable paths, environment or credentials; native resume identity must be checked against server-owned project/session bindings. Each HTTP control must be independently deliverable while a native prompt is blocked; a control receipt does not settle the run. The current prototypes do not prove that either maintained browser runtime can deliver the full live OpenCode flow.
+
 ## `AgentProvider` responsibilities
 
 One configured provider can be called directly by the route. It must describe the capabilities of **this adapter and integration mode**, admit a run before completion, keep enough ownership to observe and control the run independently of the browser response, and translate native outcomes truthfully. An in-memory run handle may implement this internally; it is not a required public interface. The provider domain must not import assistant-ui types.
