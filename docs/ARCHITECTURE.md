@@ -4,6 +4,8 @@ agentilogue aims to be a minimal chat surface for talking to agents across diffe
 
 The project should stay simple: keep working integrations working, add abstraction only when a real implementation proves it is useful, and avoid turning the UI into an agent framework.
 
+[CONTRACTS.md](CONTRACTS.md) records the current provider-neutral boundaries and behavioral invariants. Its locked decisions govern the illustrative provider sketch below; exact method signatures remain open until native validation.
+
 ## Today
 
 The initial assistant-ui template provides a complete working path:
