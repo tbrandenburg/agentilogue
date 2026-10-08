@@ -4,11 +4,7 @@
  *
  * No assistant-ui, ACP, AG-UI, or A2A dependencies belong in this module.
  */
-import type {
-  ConversationId,
-  ProviderSessionId,
-  RunId,
-} from "./identifiers";
+import type { ConversationId, ProviderSessionId, RunId } from "./identifiers";
 import type {
   AgentCapabilities,
   AgentInput,

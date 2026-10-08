@@ -18,11 +18,7 @@ export type ConversationId = z.infer<typeof ConversationIdSchema>;
 export const RunIdSchema = z.uuid().brand<"RunId">();
 export type RunId = z.infer<typeof RunIdSchema>;
 
-export const ProviderSessionIdSchema = z
-  .string()
-  .min(1)
-  .max(2048)
-  .brand<"ProviderSessionId">();
+export const ProviderSessionIdSchema = z.string().min(1).max(2048).brand<"ProviderSessionId">();
 export type ProviderSessionId = z.infer<typeof ProviderSessionIdSchema>;
 
 export const PermissionIdSchema = z.uuid().brand<"PermissionId">();

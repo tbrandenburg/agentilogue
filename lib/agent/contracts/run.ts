@@ -60,10 +60,14 @@ export const PermissionRequestSchema = z
     title: z.string().min(1).max(1024),
     options: z.array(PermissionOptionSchema).min(1).max(32),
   })
-  .refine((permission) => new Set(permission.options.map((option) => option.id)).size === permission.options.length, {
-    message: "Permission option IDs must be unique",
-    path: ["options"],
-  });
+  .refine(
+    (permission) =>
+      new Set(permission.options.map((option) => option.id)).size === permission.options.length,
+    {
+      message: "Permission option IDs must be unique",
+      path: ["options"],
+    },
+  );
 export type PermissionRequest = Readonly<z.infer<typeof PermissionRequestSchema>>;
 
 /** Only one of the native request's currently offered option IDs is valid. */

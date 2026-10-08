@@ -6,26 +6,26 @@ The existing AI SDK `/api/chat` lane remains supported. A framework-specific ass
 
 ## Five primary boundaries
 
-| Boundary | Authoritative interface | Locked decision | Choice still open |
-| --- | --- | --- | --- |
-| 1. UI runtime | [assistant-ui `AssistantRuntime`](https://www.assistant-ui.com/docs/api-reference/context-providers/assistant-runtime-provider) and [`ExternalStoreRuntime`](https://www.assistant-ui.com/docs/runtimes/custom/external-store) | Consume upstream public APIs unchanged | Which maintained runtime supplies state |
-| 2. Browser transport | [assistant-ui `AssistantTransport`](https://www.assistant-ui.com/docs/runtimes/custom/assistant-transport) **or** [official AG-UI runtime](https://www.assistant-ui.com/docs/runtimes/ag-ui/overview) | Consume an existing maintained interface unchanged | Select and validate **one** integration path |
-| 3. Application API | [`contracts/http.ts`](../lib/agent/contracts/http.ts) | Server-owned run admission, observation, authorized control independent of a browser stream | Exact routes, verbs, streamed-state codec and reconnect support |
-| 4. Provider port | [`contracts/provider.ts`](../lib/agent/contracts/provider.ts) | **`AgentProvider`** name and UI-independent start, observe, cancel, respond responsibilities | Internal method refinements based on native conformance |
-| 5. Native agent API | [ACP v1 specification](https://agentclientprotocol.com/protocol/v1/overview), [official TypeScript SDK](https://github.com/agentclientprotocol/typescript-sdk), [OpenCode ACP](https://opencode.ai/v2/docs/cli/acp/); optional [serve/SDK](https://opencode.ai/docs/server/) | Import the real upstream SDK/protocol; pin the version at the adapter edge | ACP versus native OpenCode API after live comparison |
+| Boundary             | Authoritative interface                                                                                                                                                                                                                                                      | Locked decision                                                                              | Choice still open                                               |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| 1. UI runtime        | [assistant-ui `AssistantRuntime`](https://www.assistant-ui.com/docs/api-reference/context-providers/assistant-runtime-provider) and [`ExternalStoreRuntime`](https://www.assistant-ui.com/docs/runtimes/custom/external-store)                                               | Consume upstream public APIs unchanged                                                       | Which maintained runtime supplies state                         |
+| 2. Browser transport | [assistant-ui `AssistantTransport`](https://www.assistant-ui.com/docs/runtimes/custom/assistant-transport) **or** [official AG-UI runtime](https://www.assistant-ui.com/docs/runtimes/ag-ui/overview)                                                                        | Consume an existing maintained interface unchanged                                           | Select and validate **one** integration path                    |
+| 3. Application API   | [`contracts/http.ts`](../lib/agent/contracts/http.ts)                                                                                                                                                                                                                        | Server-owned run admission, observation, authorized control independent of a browser stream  | Exact routes, verbs, streamed-state codec and reconnect support |
+| 4. Provider port     | [`contracts/provider.ts`](../lib/agent/contracts/provider.ts)                                                                                                                                                                                                                | **`AgentProvider`** name and UI-independent start, observe, cancel, respond responsibilities | Internal method refinements based on native conformance         |
+| 5. Native agent API  | [ACP v1 specification](https://agentclientprotocol.com/protocol/v1/overview), [official TypeScript SDK](https://github.com/agentclientprotocol/typescript-sdk), [OpenCode ACP](https://opencode.ai/v2/docs/cli/acp/); optional [serve/SDK](https://opencode.ai/docs/server/) | Import the real upstream SDK/protocol; pin the version at the adapter edge                   | ACP versus native OpenCode API after live comparison            |
 
 These are **five primary boundaries**, not five new AGENTILOGUE interfaces. The upstream definitions remain the source of truth; do not copy or publish them as app-owned types. `AgentRunEvent`, IDs, requests, snapshots, permissions and capabilities are **supporting contract types**, not additional architectural layers.
 
 ## Canonical source layout
 
-| File | Public responsibility |
-| --- | --- |
-| [`contracts/identifiers.ts`](../lib/agent/contracts/identifiers.ts) | Branded IDs and their runtime parsers; distinct conversation, run, provider session, permission, message and tool identities |
-| [`contracts/run.ts`](../lib/agent/contracts/run.ts) | Provider-neutral input, capabilities, permission decisions, native-safe observations, snapshot and outcome |
-| [`contracts/provider.ts`](../lib/agent/contracts/provider.ts) | The single app-owned `AgentProvider` interface, admission and observation contract |
-| [`contracts/http.ts`](../lib/agent/contracts/http.ts) | Zod-validated start/control JSON bodies and receipts; TypeScript types **inferred from schemas** |
-| [`contracts/index.ts`](../lib/agent/contracts/index.ts) | Explicit public module exports; no wildcard export and no native SDK imports |
-| [`contracts/contracts.test.ts`](../lib/agent/contracts/contracts.test.ts) | Schema acceptance/rejection and type boundary tests; native conformance tests belong to their adapters |
+| File                                                                      | Public responsibility                                                                                                        |
+| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| [`contracts/identifiers.ts`](../lib/agent/contracts/identifiers.ts)       | Branded IDs and their runtime parsers; distinct conversation, run, provider session, permission, message and tool identities |
+| [`contracts/run.ts`](../lib/agent/contracts/run.ts)                       | Provider-neutral input, capabilities, permission decisions, native-safe observations, snapshot and outcome                   |
+| [`contracts/provider.ts`](../lib/agent/contracts/provider.ts)             | The single app-owned `AgentProvider` interface, admission and observation contract                                           |
+| [`contracts/http.ts`](../lib/agent/contracts/http.ts)                     | Zod-validated start/control JSON bodies and receipts; TypeScript types **inferred from schemas**                             |
+| [`contracts/index.ts`](../lib/agent/contracts/index.ts)                   | Explicit public module exports; no wildcard export and no native SDK imports                                                 |
+| [`contracts/contracts.test.ts`](../lib/agent/contracts/contracts.test.ts) | Schema acceptance/rejection and type boundary tests; native conformance tests belong to their adapters                       |
 
 Do not re-declare these app-owned shapes in documentation, UI components or provider adapters. Protocol-specific ACP types belong in the OpenCode adapter; assistant-ui's types belong in the browser adapter. `/api/agent` handlers **must** parse untrusted JSON using the exported schemas. Static branded types alone are not validation or authorization.
 
@@ -45,15 +45,15 @@ Do not create placeholder `AgentService`, `AgentRegistry`, orchestration or plug
 
 ## Secondary contracts and change policy
 
-| Type group | Meaning we preserve | What may change with real provider evidence |
-| --- | --- | --- |
-| IDs and admission | Distinct ownership, no mix-up of run and native session; admission before completion | Representation, native binding timing, retry/idempotence rules |
-| `AgentCapabilities` | Advertise actual configured integration behavior, not provider branding; distinguish continuation from cold reattach and same-process from durable replay | Capability detail, optional extensible feature categories |
-| `RunSnapshot` and updates | Atomic initial state plus gap-free sequenced changes; observation separate from control | Buffering, replay storage, per-observer reconnect contract |
-| `AgentRunEvent` | Stable message/tool identity, explicit deltas versus patches, native tools not run twice | Additional **needed** normalized events, multimedia content semantics |
-| Permission decision | Exact offered IDs, one settlement, cancellation race handled | Optional question/elicitation variants and native approval scopes |
-| Outcome/control receipts | Local dispatch and observed native termination are different | Exact error taxonomy and child-work settlement details |
-| Discovery/history/export | Preserve native features without forcing a lowest-common-denominator API | Add optional capabilities and operations on evidence, not as placeholders |
+| Type group                | Meaning we preserve                                                                                                                                       | What may change with real provider evidence                               |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| IDs and admission         | Distinct ownership, no mix-up of run and native session; admission before completion                                                                      | Representation, native binding timing, retry/idempotence rules            |
+| `AgentCapabilities`       | Advertise actual configured integration behavior, not provider branding; distinguish continuation from cold reattach and same-process from durable replay | Capability detail, optional extensible feature categories                 |
+| `RunSnapshot` and updates | Atomic initial state plus gap-free sequenced changes; observation separate from control                                                                   | Buffering, replay storage, per-observer reconnect contract                |
+| `AgentRunEvent`           | Stable message/tool identity, explicit deltas versus patches, native tools not run twice                                                                  | Additional **needed** normalized events, multimedia content semantics     |
+| Permission decision       | Exact offered IDs, one settlement, cancellation race handled                                                                                              | Optional question/elicitation variants and native approval scopes         |
+| Outcome/control receipts  | Local dispatch and observed native termination are different                                                                                              | Exact error taxonomy and child-work settlement details                    |
+| Discovery/history/export  | Preserve native features without forcing a lowest-common-denominator API                                                                                  | Add optional capabilities and operations on evidence, not as placeholders |
 
 Type definitions are **authoritative now**, not prototypes. Changing a TypeScript signature is an API change requiring review, tests, and updated consumers; it does not automatically require an architecture rewrite. The locked boundaries/invariants above are higher stability commitments. Native conformance evidence can justify a revision, which must be recorded in the relevant implementation PR.
 
@@ -61,7 +61,7 @@ Type definitions are **authoritative now**, not prototypes. Changing a TypeScrip
 
 Our app-owned provider port is informed primarily by [Archon's provider interface](https://github.com/coleam00/Archon/blob/c5af8035/packages/provider-contract/src/agent-provider.ts) and [node-red-agents' execution lifecycle](https://github.com/tbrandenburg/node-red-agents/blob/7f738528/packages/node-red-agents/nodes/agent/lib/execution/lifecycle.js). Capability differentiation draws from [Archon capabilities](https://github.com/coleam00/Archon/blob/c5af8035/packages/provider-contract/src/capabilities.ts), native permission mapping from [Omnigent](https://github.com/omnigent-ai/omnigent/blob/0b171e29/omnigent/harnesses/opencode_native/permissions.py), and session/history operations from [MADE](https://github.com/tbrandenburg/made/blob/17292a5a/packages/pybackend/agent_cli.py). Atomic snapshot/subscription semantics were informed by [AHP](https://microsoft.github.io/agent-host-protocol/specification/subscriptions.html); this is **not** AHP adoption. [AG-UI events](https://docs.ag-ui.com/concepts/events) inform the browser projection without becoming our native provider interface. [A2A](https://a2a-protocol.org/latest/specification/) is a possible remote task adapter, not an ACP session clone. [MCP](https://modelcontextprotocol.io/specification/2026-07-28/server) remains a separate tool/resource boundary.
 
-These references informed the *behavior and boundaries*, not a claim that code was copied, is conformance-certified, or implements those other protocols.
+These references informed the _behavior and boundaries_, not a claim that code was copied, is conformance-certified, or implements those other protocols.
 
 ## Verification and enforcement
 

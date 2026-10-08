@@ -42,12 +42,7 @@ export type {
   ControlReceipt,
 } from "./run";
 
-export type {
-  AgentProvider,
-  StartRunRequest,
-  RunAdmission,
-  ObserveOptions,
-} from "./provider";
+export type { AgentProvider, StartRunRequest, RunAdmission, ObserveOptions } from "./provider";
 
 export {
   StartAgentRunBodySchema,
