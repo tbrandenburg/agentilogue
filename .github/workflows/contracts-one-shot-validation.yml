@@ -1,0 +1,37 @@
+name: One-shot contract module validation
+on:
+  push:
+    branches:
+      - docs/agent-contracts
+
+permissions:
+  contents: write
+
+jobs:
+  validate-and-commit:
+    if: github.repository == 'tbrandenburg/agentilogue' && github.ref == 'refs/heads/docs/agent-contracts'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: oven-sh/setup-bun@v2
+      - name: Install runtime schema dependency, format and verify
+        run: |
+          bun install --frozen-lockfile
+          bun add zod@4.4.2 --exact
+          bunx oxfmt docs/CONTRACTS.md docs/ARCHITECTURE.md lib/agent/contracts
+          bun run format
+          bun run lint
+          bun run test
+          bunx tsc --noEmit
+          bun run models:check
+      - name: Commit validated files and remove one-shot workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/contracts-one-shot-validation.yml
+          git add package.json bun.lock docs/CONTRACTS.md docs/ARCHITECTURE.md lib/agent/contracts
+          git commit -m "refactor(contracts): validate canonical Zod-backed contract module"
+          git push origin HEAD:docs/agent-contracts
