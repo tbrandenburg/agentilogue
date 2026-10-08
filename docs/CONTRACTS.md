@@ -22,7 +22,25 @@ The upstream interface is proven by its own implementation; an agentilogue adapt
 
 One configured provider can be called directly by the route. It must describe the capabilities of **this adapter and integration mode**, admit a run before completion, keep enough ownership to observe and control the run independently of the browser response, and translate native outcomes truthfully. An in-memory run handle may implement this internally; it is not a required public interface. The provider domain must not import assistant-ui types.
 
-The conceptual operations are **describe**, **start**, **observe**, **cancel**, and **respond to a pending interaction**. Their exact method names, argument lists, and return types remain open; the name `AgentProvider` and the responsibilities above are the contract.
+The [compilable candidate interface](../lib/agent/contracts.ts) makes those responsibilities concrete for the first experiment:
+
+```ts
+interface AgentProvider<TNativeEvent> {
+  readonly id: string;
+  describe(): AgentCapabilities;
+  start(request: StartRunRequest): Promise<RunBinding>;
+  observe(
+    runId: RunId,
+    listener: (entry: SequencedObservation<TNativeEvent>) => void,
+  ): Promise<RunObservationHandle<TNativeEvent>>;
+  cancel(runId: RunId): Promise<ControlReceipt>;
+  respond(runId: RunId, response: InteractionResponse): Promise<void>;
+}
+```
+
+The linked module defines every supporting type shown here: distinct IDs, request and admission, capabilities, gap-aware observations, pending permission, outcome, and local control receipt. Its generic native event parameter keeps official ACP/OpenCode update types at the provider edge instead of publishing a copied `AgentEvent` vocabulary. Its snapshot event list is an in-memory candidate, **not** a promise of durable replay. Questions, history, and subagents have no common coded response contract yet and must not be advertised as implemented.
+
+The module is a **type-checked research candidate**, not a production implementation or a frozen public API. `describe`/`start`/`observe`/control method names, fields, and event envelope may change with the real OpenCode proof. The locked decision is one UI-independent `AgentProvider` boundary with the semantics above. Do not duplicate these app-owned definitions elsewhere in the repository.
 
 An adapter without native interaction support must report that limitation. A browser-supplied `conversationId` alone does not establish ownership. The initial single-user implementation may run only in a trusted, local deployment with access restricted accordingly; it must not claim multi-user authorization. Before exposing controls to other users or an untrusted network, the route must authenticate the caller and authorize the project and run. Working directory, executable, environment, and credentials are resolved or validated on the server.
 
