@@ -6,6 +6,7 @@
  */
 
 declare const idKind: unique symbol;
+/** Brands prevent accidental mixing in TypeScript; validate wire strings at the route. */
 export type Id<Kind extends string> = string & { readonly [idKind]: Kind };
 export type ConversationId = Id<"conversation">;
 export type RunId = Id<"run">;
@@ -66,7 +67,10 @@ export type RunOutcome =
   | { readonly kind: "failed"; readonly foreground: "stopped" | "unknown"; readonly message: string }
   | { readonly kind: "unknown"; readonly message: string };
 
-/** Private app observation envelope. TNativeEvent is an official SDK type. */
+/**
+ * Private server-side envelope. TNativeEvent is an official SDK type.
+ * Never serialize native payloads directly to the browser; project vetted fields.
+ */
 export type AgentObservation<TNativeEvent> =
   | { readonly kind: "native"; readonly value: TNativeEvent }
   | { readonly kind: "session.bound"; readonly providerSessionId: ProviderSessionId }
