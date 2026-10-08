@@ -64,7 +64,11 @@ export type InteractionResponse = {
 
 export type RunOutcome =
   | { readonly kind: "success" | "cancelled"; readonly foreground: "stopped" }
-  | { readonly kind: "failed"; readonly foreground: "stopped" | "unknown"; readonly message: string }
+  | {
+      readonly kind: "failed";
+      readonly foreground: "stopped" | "unknown";
+      readonly message: string;
+    }
   | { readonly kind: "unknown"; readonly message: string };
 
 /**
