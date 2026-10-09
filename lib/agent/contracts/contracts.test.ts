@@ -204,6 +204,73 @@ describe("internal provider contract", () => {
     assert.deepEqual(RunSnapshotSchema.parse(snapshot).parts, snapshot.parts);
   });
 
+  it("rejects duplicate message, tool, and pending permission IDs", () => {
+    const message = {
+      id: "msg-1",
+      segmentId: "segment-1",
+      channel: "assistant",
+      text: "Hello",
+    } as const;
+    const tool = { id: "tool-1", title: "Read", status: "completed" } as const;
+    const permission = {
+      id: permissionId,
+      title: "Write a file",
+      options: [{ id: "allow", label: "Allow", intent: "allow" }],
+    } as const;
+    const running = {
+      runId,
+      conversationId: "thread-1",
+      phase: "running",
+      lastSequence: 0,
+      messages: [message],
+      tools: [tool],
+      parts: [
+        { type: "message", messageId: message.id, segmentId: message.segmentId },
+        { type: "tool", toolCallId: tool.id },
+      ],
+      pendingPermissions: [permission],
+    };
+
+    for (const invalid of [
+      { ...running, messages: [message, message], parts: [running.parts[0], running.parts[0], running.parts[1]] },
+      { ...running, tools: [tool, tool] },
+      { ...running, pendingPermissions: [permission, permission] },
+    ]) {
+      assert.equal(RunSnapshotSchema.safeParse(invalid).success, false);
+    }
+  });
+
+  it("does not retain pending permissions in finished or unknown snapshots", () => {
+    const permission = {
+      id: permissionId,
+      title: "Write a file",
+      options: [{ id: "allow", label: "Allow", intent: "allow" }],
+    } as const;
+    const base = {
+      runId,
+      conversationId: "thread-1",
+      lastSequence: 0,
+      messages: [],
+      tools: [],
+      parts: [],
+      pendingPermissions: [permission],
+    };
+
+    assert.equal(
+      RunSnapshotSchema.safeParse({ ...base, phase: "finished", outcome: { kind: "success" } })
+        .success,
+      false,
+    );
+    assert.equal(
+      RunSnapshotSchema.safeParse({
+        ...base,
+        phase: "unknown",
+        outcome: { kind: "unknown", message: "Lost native agent" },
+      }).success,
+      false,
+    );
+  });
+
   it("never embeds native SDK events or opaque tool execution payloads", () => {
     assert.equal(
       AgentRunEventSchema.parse({

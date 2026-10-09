@@ -169,17 +169,68 @@ const SnapshotBaseSchema = z.strictObject({
 });
 
 /** Running snapshots have no outcome; terminal/unknown states require one. */
-export const RunSnapshotSchema = z.discriminatedUnion("phase", [
-  SnapshotBaseSchema.extend({ phase: z.literal("running") }),
-  SnapshotBaseSchema.extend({
-    phase: z.literal("finished"),
-    outcome: ConfirmedOutcomeSchema,
-  }),
-  SnapshotBaseSchema.extend({
-    phase: z.literal("unknown"),
-    outcome: UnknownOutcomeSchema,
-  }),
-]);
+export const RunSnapshotSchema = z
+  .discriminatedUnion("phase", [
+    SnapshotBaseSchema.extend({ phase: z.literal("running") }),
+    SnapshotBaseSchema.extend({
+      phase: z.literal("finished"),
+      outcome: ConfirmedOutcomeSchema,
+    }),
+    SnapshotBaseSchema.extend({
+      phase: z.literal("unknown"),
+      outcome: UnknownOutcomeSchema,
+    }),
+  ])
+  .superRefine((snapshot, context) => {
+    const addDuplicateIdIssue = (field: string, values: readonly string[]) => {
+      if (new Set(values).size !== values.length) {
+        context.addIssue({ code: "custom", message: `${field} IDs must be unique`, path: [field] });
+      }
+    };
+    addDuplicateIdIssue(
+      "messages",
+      snapshot.messages.map((message) => JSON.stringify([message.id, message.segmentId])),
+    );
+    addDuplicateIdIssue(
+      "tools",
+      snapshot.tools.map((tool) => tool.id),
+    );
+    addDuplicateIdIssue(
+      "pendingPermissions",
+      snapshot.pendingPermissions.map((permission) => permission.id),
+    );
+
+    if (snapshot.phase !== "running" && snapshot.pendingPermissions.length > 0) {
+      context.addIssue({
+        code: "custom",
+        message: "Terminal snapshots cannot retain pending permissions",
+        path: ["pendingPermissions"],
+      });
+    }
+
+    const messageKeys = new Set(
+      snapshot.messages.map((message) => JSON.stringify([message.id, message.segmentId])),
+    );
+    const messagePartKeys = snapshot.parts
+      .filter((part) => part.type === "message")
+      .map((part) => JSON.stringify([part.messageId, part.segmentId]));
+    const toolIds = new Set(snapshot.tools.map((tool) => tool.id));
+    const toolPartIds = snapshot.parts
+      .filter((part) => part.type === "tool")
+      .map((part) => part.toolCallId);
+    if (
+      messageKeys.size !== messagePartKeys.length ||
+      messagePartKeys.some((key) => !messageKeys.has(key)) ||
+      toolIds.size !== toolPartIds.length ||
+      toolPartIds.some((id) => !toolIds.has(id))
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Snapshot parts must reference each message segment and tool exactly once",
+        path: ["parts"],
+      });
+    }
+  });
 export type RunSnapshot = Readonly<z.infer<typeof RunSnapshotSchema>>;
 
 export const RunObservationSchema = z.discriminatedUnion("type", [
