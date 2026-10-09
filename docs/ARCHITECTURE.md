@@ -4,6 +4,8 @@ agentilogue aims to be a minimal chat surface for talking to agents across diffe
 
 The project should stay simple: keep working integrations working, add abstraction only when a real implementation proves it is useful, and avoid turning the UI into an agent framework.
 
+[CONTRACTS.md](CONTRACTS.md) records the current provider-neutral boundaries and behavioral invariants. Its locked decisions govern the illustrative provider sketch below; the linked TypeScript candidates remain subject to native validation.
+
 ## Today
 
 The initial assistant-ui template provides a complete working path:
@@ -100,19 +102,9 @@ Both paths should remain possible.
 
 The backend should expose the smallest useful contract between the UI transport and a concrete agent.
 
-A future provider contract may be as small as:
+The **implemented contract definitions** are maintained in [`lib/agent/contracts/`](../lib/agent/contracts/) and governed by [`CONTRACTS.md`](CONTRACTS.md). The sole app-owned provider port is `AgentProvider`; it owns independent admission, snapshot-first observation, cancellation, permission responses and actual capability reporting. Its exported types are authoritative internal APIs, and native OpenCode ACP evidence may justify reviewed revisions.
 
-```ts
-interface AgentProvider {
-  readonly id: string;
-  readonly capabilities: AgentCapabilities;
-
-  run(request: AgentRequest): AsyncIterable<AgentEvent>;
-  cancel?(runId: string): Promise<void>;
-}
-```
-
-This is a direction, not an API commitment. opencode should determine what the real minimum contract needs to be.
+Do not introduce an illustrative competing `run(): AsyncIterable<AgentEvent>` interface: the current port distinguishes admission, observation and independently deliverable control.
 
 The provider layer should not depend on assistant-ui types. Translation between assistant-ui/transport state and agentilogue domain types belongs at the transport boundary.
 
