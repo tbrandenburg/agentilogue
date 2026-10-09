@@ -13,6 +13,15 @@ import {
   StartAgentRunBodySchema,
   StartAgentRunReceiptSchema,
 } from "./index";
+import type { PermissionId, RunId } from "./index";
+
+type Assert<T extends true> = T;
+type IsNotAssignable<From, To> = [From] extends [To] ? false : true;
+type BrandedIdBoundaryTests = [
+  Assert<IsNotAssignable<string, RunId>>,
+  Assert<IsNotAssignable<RunId, PermissionId>>,
+  Assert<IsNotAssignable<PermissionId, RunId>>,
+];
 
 const runId = "7b34e408-421a-4f06-8dbe-720e76f8e813";
 const permissionId = "6f281552-462e-40c8-b67e-c8c0f844a320";
@@ -87,6 +96,11 @@ describe("application HTTP contract", () => {
 });
 
 describe("internal provider contract", () => {
+  it("keeps branded IDs distinct at compile time", () => {
+    const brandedIdBoundaryTests: BrandedIdBoundaryTests = [true, true, true];
+    assert.deepEqual(brandedIdBoundaryTests, [true, true, true]);
+  });
+
   it("accepts bare MIME type/subtype tokens and rejects malformed values and parameters", () => {
     for (const mimeType of [
       "text/plain",
@@ -247,6 +261,13 @@ describe("internal provider contract", () => {
     } as const;
 
     assert.deepEqual(RunSnapshotSchema.parse(snapshot).parts, snapshot.parts);
+    assert.equal(
+      RunSnapshotSchema.safeParse({
+        ...snapshot,
+        parts: snapshot.parts.slice(1),
+      }).success,
+      false,
+    );
   });
 
   it("rejects duplicate message, tool, and pending permission IDs", () => {
@@ -277,7 +298,11 @@ describe("internal provider contract", () => {
     };
 
     for (const invalid of [
-      { ...running, messages: [message, message], parts: [running.parts[0], running.parts[0], running.parts[1]] },
+      {
+        ...running,
+        messages: [message, message],
+        parts: [running.parts[0], running.parts[0], running.parts[1]],
+      },
       { ...running, tools: [tool, tool] },
       { ...running, pendingPermissions: [permission, permission] },
     ]) {

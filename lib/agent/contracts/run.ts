@@ -188,21 +188,24 @@ export const RunSnapshotSchema = z
     }),
   ])
   .superRefine((snapshot, context) => {
-    const addDuplicateIdIssue = (field: string, values: readonly string[]) => {
+    const addUniquenessIssue = (path: string, label: string, values: readonly string[]) => {
       if (new Set(values).size !== values.length) {
-        context.addIssue({ code: "custom", message: `${field} IDs must be unique`, path: [field] });
+        context.addIssue({ code: "custom", message: `${label} must be unique`, path: [path] });
       }
     };
-    addDuplicateIdIssue(
+    addUniquenessIssue(
       "messages",
+      "Message segment keys",
       snapshot.messages.map((message) => JSON.stringify([message.id, message.segmentId])),
     );
-    addDuplicateIdIssue(
+    addUniquenessIssue(
       "tools",
+      "Tool IDs",
       snapshot.tools.map((tool) => tool.id),
     );
-    addDuplicateIdIssue(
+    addUniquenessIssue(
       "pendingPermissions",
+      "Pending permission IDs",
       snapshot.pendingPermissions.map((permission) => permission.id),
     );
 
