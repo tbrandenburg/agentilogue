@@ -13,7 +13,7 @@ import {
   StartAgentRunBodySchema,
   StartAgentRunReceiptSchema,
 } from "./index";
-import type { PermissionId, RunId } from "./index";
+import type { PermissionId, RunId, RunPart } from "./index";
 
 type Assert<T extends true> = T;
 type IsNotAssignable<From, To> = [From] extends [To] ? false : true;
@@ -268,6 +268,105 @@ describe("internal provider contract", () => {
       }).success,
       false,
     );
+    assert.equal(
+      RunSnapshotSchema.safeParse({
+        ...snapshot,
+        parts: [snapshot.parts[0], snapshot.parts[0], snapshot.parts[1]],
+      }).success,
+      false,
+    );
+    assert.equal(
+      RunSnapshotSchema.safeParse({
+        ...snapshot,
+        tools: [...snapshot.tools, { id: "tool-2", status: "completed" }],
+        parts: [snapshot.parts[0], snapshot.parts[1], snapshot.parts[1], snapshot.parts[2]],
+      }).success,
+      false,
+    );
+  });
+
+  it("keeps first-seen live part order stable across updates and matches the snapshot", () => {
+    const events = [
+      {
+        sequence: 1,
+        event: {
+          type: "message.delta",
+          messageId: "msg-1",
+          segmentId: "segment-1",
+          channel: "assistant",
+          text: "Before",
+        },
+      },
+      {
+        sequence: 2,
+        event: { type: "tool.updated", toolCallId: "tool-1", status: "running" },
+      },
+      {
+        sequence: 3,
+        event: {
+          type: "message.delta",
+          messageId: "msg-1",
+          segmentId: "segment-2",
+          channel: "assistant",
+          text: "After",
+        },
+      },
+      {
+        sequence: 4,
+        event: {
+          type: "message.delta",
+          messageId: "msg-1",
+          segmentId: "segment-1",
+          channel: "assistant",
+          text: " continued",
+        },
+      },
+      {
+        sequence: 5,
+        event: { type: "tool.updated", toolCallId: "tool-1", status: "completed" },
+      },
+    ] as const;
+    const liveEvents = events.map((observation) =>
+      RunObservationSchema.parse({ type: "event", ...observation }),
+    );
+    const seen = new Set<string>();
+    const liveParts: RunPart[] = [];
+    for (const observation of liveEvents) {
+      if (observation.type !== "event") continue;
+      const { event } = observation;
+      if (event.type === "message.delta") {
+        const key = `message:${JSON.stringify([event.messageId, event.segmentId])}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        liveParts.push({ type: "message", messageId: event.messageId, segmentId: event.segmentId });
+        continue;
+      }
+      if (event.type === "tool.updated") {
+        const key = `tool:${event.toolCallId}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        liveParts.push({ type: "tool", toolCallId: event.toolCallId });
+      }
+    }
+    const snapshot = {
+      runId,
+      conversationId: "thread-1",
+      phase: "running",
+      lastSequence: 5,
+      messages: [
+        { id: "msg-1", segmentId: "segment-1", channel: "assistant", text: "Before continued" },
+        { id: "msg-1", segmentId: "segment-2", channel: "assistant", text: "After" },
+      ],
+      tools: [{ id: "tool-1", status: "completed" }],
+      parts: liveParts,
+      pendingPermissions: [],
+    } as const;
+
+    assert.deepEqual(RunSnapshotSchema.parse(snapshot).parts, [
+      { type: "message", messageId: "msg-1", segmentId: "segment-1" },
+      { type: "tool", toolCallId: "tool-1" },
+      { type: "message", messageId: "msg-1", segmentId: "segment-2" },
+    ]);
   });
 
   it("rejects duplicate message, tool, and pending permission IDs", () => {
