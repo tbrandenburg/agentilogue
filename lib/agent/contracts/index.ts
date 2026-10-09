@@ -27,6 +27,7 @@ export {
   AgentRunEventSchema,
   RunMessageSchema,
   RunToolSchema,
+  RunPartSchema,
   RunSnapshotSchema,
   RunObservationSchema,
 } from "./run";
@@ -41,6 +42,7 @@ export type {
   AgentRunEvent,
   RunMessage,
   RunTool,
+  RunPart,
   RunSnapshot,
   RunObservation,
   ControlReceipt,

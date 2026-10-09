@@ -5,12 +5,23 @@ import {
   AgentControlBodySchema,
   AgentControlReceiptSchema,
   AgentRunEventSchema,
+  AgentInputSchema,
+  RunToolSchema,
   RunSnapshotSchema,
   RunObservationSchema,
   PermissionRequestSchema,
   StartAgentRunBodySchema,
   StartAgentRunReceiptSchema,
 } from "./index";
+import type { PermissionId, RunId } from "./index";
+
+type Assert<T extends true> = T;
+type IsNotAssignable<From, To> = [From] extends [To] ? false : true;
+type BrandedIdBoundaryTests = [
+  Assert<IsNotAssignable<string, RunId>>,
+  Assert<IsNotAssignable<RunId, PermissionId>>,
+  Assert<IsNotAssignable<PermissionId, RunId>>,
+];
 
 const runId = "7b34e408-421a-4f06-8dbe-720e76f8e813";
 const permissionId = "6f281552-462e-40c8-b67e-c8c0f844a320";
@@ -85,6 +96,54 @@ describe("application HTTP contract", () => {
 });
 
 describe("internal provider contract", () => {
+  it("keeps branded IDs distinct at compile time", () => {
+    const brandedIdBoundaryTests: BrandedIdBoundaryTests = [true, true, true];
+    assert.deepEqual(brandedIdBoundaryTests, [true, true, true]);
+  });
+
+  it("accepts bare MIME type/subtype tokens and rejects malformed values and parameters", () => {
+    for (const mimeType of [
+      "text/plain",
+      "application/vnd.example+json",
+      "application/x-test!$&^_`|~",
+    ]) {
+      assert.equal(
+        AgentInputSchema.safeParse({ type: "file", fileId: "file-1", mimeType }).success,
+        true,
+      );
+    }
+    for (const mimeType of [
+      "",
+      "plain",
+      "/plain",
+      "text/",
+      "text/plain/extra",
+      "text /plain",
+      "text/plain; charset=utf-8",
+    ]) {
+      assert.equal(
+        AgentInputSchema.safeParse({ type: "file", fileId: "file-1", mimeType }).success,
+        false,
+      );
+    }
+  });
+
+  it("applies the same non-empty title policy to tool updates and snapshots", () => {
+    const event = (title: string) => ({ type: "tool.updated", toolCallId: "tool-1", title });
+    const tool = (title: string) => ({ id: "tool-1", title });
+    for (const title of ["Run command", " "]) {
+      assert.equal(AgentRunEventSchema.safeParse(event(title)).success, true);
+      assert.equal(RunToolSchema.safeParse(tool(title)).success, true);
+    }
+    assert.equal(AgentRunEventSchema.safeParse(event("")).success, false);
+    assert.equal(RunToolSchema.safeParse(tool("")).success, false);
+    assert.equal(
+      AgentRunEventSchema.safeParse({ type: "tool.updated", toolCallId: "tool-1" }).success,
+      true,
+    );
+    assert.equal(RunToolSchema.safeParse({ id: "tool-1" }).success, true);
+  });
+
   it("capabilities distinguish cold reattach from same-process reconnect", () => {
     const capability = {
       input: { text: true, files: false },
@@ -140,6 +199,7 @@ describe("internal provider contract", () => {
       lastSequence: 0,
       messages: [],
       tools: [],
+      parts: [],
       pendingPermissions: [],
     };
     assert.equal(RunSnapshotSchema.safeParse(running).success, true);
@@ -181,11 +241,112 @@ describe("internal provider contract", () => {
     );
   });
 
+  it("preserves repeated text segments around tools in snapshot order", () => {
+    const snapshot = {
+      runId,
+      conversationId: "thread-1",
+      phase: "running",
+      lastSequence: 5,
+      messages: [
+        { id: "msg-1", segmentId: "segment-1", channel: "assistant", text: "Before" },
+        { id: "msg-1", segmentId: "segment-2", channel: "assistant", text: "After" },
+      ],
+      tools: [{ id: "tool-1", title: "Read file", status: "completed" }],
+      parts: [
+        { type: "message", messageId: "msg-1", segmentId: "segment-1" },
+        { type: "tool", toolCallId: "tool-1" },
+        { type: "message", messageId: "msg-1", segmentId: "segment-2" },
+      ],
+      pendingPermissions: [],
+    } as const;
+
+    assert.deepEqual(RunSnapshotSchema.parse(snapshot).parts, snapshot.parts);
+    assert.equal(
+      RunSnapshotSchema.safeParse({
+        ...snapshot,
+        parts: snapshot.parts.slice(1),
+      }).success,
+      false,
+    );
+  });
+
+  it("rejects duplicate message, tool, and pending permission IDs", () => {
+    const message = {
+      id: "msg-1",
+      segmentId: "segment-1",
+      channel: "assistant",
+      text: "Hello",
+    } as const;
+    const tool = { id: "tool-1", title: "Read", status: "completed" } as const;
+    const permission = {
+      id: permissionId,
+      title: "Write a file",
+      options: [{ id: "allow", label: "Allow", intent: "allow" }],
+    } as const;
+    const running = {
+      runId,
+      conversationId: "thread-1",
+      phase: "running",
+      lastSequence: 0,
+      messages: [message],
+      tools: [tool],
+      parts: [
+        { type: "message", messageId: message.id, segmentId: message.segmentId },
+        { type: "tool", toolCallId: tool.id },
+      ],
+      pendingPermissions: [permission],
+    };
+
+    for (const invalid of [
+      {
+        ...running,
+        messages: [message, message],
+        parts: [running.parts[0], running.parts[0], running.parts[1]],
+      },
+      { ...running, tools: [tool, tool] },
+      { ...running, pendingPermissions: [permission, permission] },
+    ]) {
+      assert.equal(RunSnapshotSchema.safeParse(invalid).success, false);
+    }
+  });
+
+  it("does not retain pending permissions in finished or unknown snapshots", () => {
+    const permission = {
+      id: permissionId,
+      title: "Write a file",
+      options: [{ id: "allow", label: "Allow", intent: "allow" }],
+    } as const;
+    const base = {
+      runId,
+      conversationId: "thread-1",
+      lastSequence: 0,
+      messages: [],
+      tools: [],
+      parts: [],
+      pendingPermissions: [permission],
+    };
+
+    assert.equal(
+      RunSnapshotSchema.safeParse({ ...base, phase: "finished", outcome: { kind: "success" } })
+        .success,
+      false,
+    );
+    assert.equal(
+      RunSnapshotSchema.safeParse({
+        ...base,
+        phase: "unknown",
+        outcome: { kind: "unknown", message: "Lost native agent" },
+      }).success,
+      false,
+    );
+  });
+
   it("never embeds native SDK events or opaque tool execution payloads", () => {
     assert.equal(
       AgentRunEventSchema.parse({
         type: "message.delta",
         messageId: "msg-1",
+        segmentId: "segment-1",
         channel: "assistant",
         text: "Hello",
       }).type,

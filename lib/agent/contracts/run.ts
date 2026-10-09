@@ -13,12 +13,18 @@ import {
   ToolCallIdSchema,
 } from "./identifiers";
 
+// MIME inputs are bare type/subtype values; parameters are intentionally unsupported.
+const MimeTypeSchema = z
+  .string()
+  .max(128)
+  .regex(/^[!#$%&'*+.^_`|~0-9A-Za-z-]+\/[!#$%&'*+.^_`|~0-9A-Za-z-]+$/);
+
 export const AgentInputSchema = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("text"), text: z.string().min(1).max(65_536) }),
   z.strictObject({
     type: z.literal("file"),
     fileId: z.string().min(1).max(256),
-    mimeType: z.string().min(3).max(128),
+    mimeType: MimeTypeSchema,
   }),
 ]);
 export type AgentInput = z.infer<typeof AgentInputSchema>;
@@ -111,6 +117,7 @@ export const AgentRunEventSchema = z.discriminatedUnion("type", [
   z.strictObject({
     type: z.literal("message.delta"),
     messageId: MessageIdSchema,
+    segmentId: z.string().min(1).max(256),
     channel: z.enum(["assistant", "reasoning"]),
     text: z.string().min(1),
   }),
@@ -130,14 +137,26 @@ export type AgentRunEvent = Readonly<z.infer<typeof AgentRunEventSchema>>;
 
 export const RunMessageSchema = z.strictObject({
   id: MessageIdSchema,
+  segmentId: z.string().min(1).max(256),
   channel: z.enum(["assistant", "reasoning"]),
   text: z.string(),
 });
 export type RunMessage = Readonly<z.infer<typeof RunMessageSchema>>;
 
+/** Ordered references to materialized text segments and tool calls. */
+export const RunPartSchema = z.discriminatedUnion("type", [
+  z.strictObject({
+    type: z.literal("message"),
+    messageId: MessageIdSchema,
+    segmentId: z.string().min(1).max(256),
+  }),
+  z.strictObject({ type: z.literal("tool"), toolCallId: ToolCallIdSchema }),
+]);
+export type RunPart = Readonly<z.infer<typeof RunPartSchema>>;
+
 export const RunToolSchema = z.strictObject({
   id: ToolCallIdSchema,
-  title: z.string().max(1024).optional(),
+  title: z.string().min(1).max(1024).optional(),
   status: ToolStatusSchema.optional(),
   summary: z.string().max(8192).optional(),
 });
@@ -151,21 +170,76 @@ const SnapshotBaseSchema = z.strictObject({
   lastSequence: z.number().int().nonnegative(),
   messages: z.array(RunMessageSchema),
   tools: z.array(RunToolSchema),
+  parts: z.array(RunPartSchema),
   pendingPermissions: z.array(PermissionRequestSchema),
 });
 
 /** Running snapshots have no outcome; terminal/unknown states require one. */
-export const RunSnapshotSchema = z.discriminatedUnion("phase", [
-  SnapshotBaseSchema.extend({ phase: z.literal("running") }),
-  SnapshotBaseSchema.extend({
-    phase: z.literal("finished"),
-    outcome: ConfirmedOutcomeSchema,
-  }),
-  SnapshotBaseSchema.extend({
-    phase: z.literal("unknown"),
-    outcome: UnknownOutcomeSchema,
-  }),
-]);
+export const RunSnapshotSchema = z
+  .discriminatedUnion("phase", [
+    SnapshotBaseSchema.extend({ phase: z.literal("running") }),
+    SnapshotBaseSchema.extend({
+      phase: z.literal("finished"),
+      outcome: ConfirmedOutcomeSchema,
+    }),
+    SnapshotBaseSchema.extend({
+      phase: z.literal("unknown"),
+      outcome: UnknownOutcomeSchema,
+    }),
+  ])
+  .superRefine((snapshot, context) => {
+    const addUniquenessIssue = (path: string, label: string, values: readonly string[]) => {
+      if (new Set(values).size !== values.length) {
+        context.addIssue({ code: "custom", message: `${label} must be unique`, path: [path] });
+      }
+    };
+    addUniquenessIssue(
+      "messages",
+      "Message segment keys",
+      snapshot.messages.map((message) => JSON.stringify([message.id, message.segmentId])),
+    );
+    addUniquenessIssue(
+      "tools",
+      "Tool IDs",
+      snapshot.tools.map((tool) => tool.id),
+    );
+    addUniquenessIssue(
+      "pendingPermissions",
+      "Pending permission IDs",
+      snapshot.pendingPermissions.map((permission) => permission.id),
+    );
+
+    if (snapshot.phase !== "running" && snapshot.pendingPermissions.length > 0) {
+      context.addIssue({
+        code: "custom",
+        message: "Terminal snapshots cannot retain pending permissions",
+        path: ["pendingPermissions"],
+      });
+    }
+
+    const messageKeys = new Set(
+      snapshot.messages.map((message) => JSON.stringify([message.id, message.segmentId])),
+    );
+    const messagePartKeys = snapshot.parts
+      .filter((part) => part.type === "message")
+      .map((part) => JSON.stringify([part.messageId, part.segmentId]));
+    const toolIds = new Set(snapshot.tools.map((tool) => tool.id));
+    const toolPartIds = snapshot.parts
+      .filter((part) => part.type === "tool")
+      .map((part) => part.toolCallId);
+    if (
+      messageKeys.size !== messagePartKeys.length ||
+      messagePartKeys.some((key) => !messageKeys.has(key)) ||
+      toolIds.size !== toolPartIds.length ||
+      toolPartIds.some((id) => !toolIds.has(id))
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Snapshot parts must reference each message segment and tool exactly once",
+        path: ["parts"],
+      });
+    }
+  });
 export type RunSnapshot = Readonly<z.infer<typeof RunSnapshotSchema>>;
 
 export const RunObservationSchema = z.discriminatedUnion("type", [
