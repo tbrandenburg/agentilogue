@@ -9,11 +9,14 @@ export default function Home() {
     process.env.AGENT_TRUSTED_LOCAL === "1" &&
     Boolean(process.env.OPENCODE_CWD?.startsWith("/"));
   const projectName = process.cwd().split(/[\\/]/).filter(Boolean).at(-1) ?? "project";
+  const openCodeProjectName =
+    process.env.OPENCODE_CWD?.split(/[\\/]/).filter(Boolean).at(-1) ?? "project";
 
   return (
     <Assistant
       hasOpenAIKey={hasOpenAIKey}
       hasOpenCodeApi={hasOpenCodeApi}
+      openCodeProjectName={openCodeProjectName}
       projectName={projectName}
     />
   );

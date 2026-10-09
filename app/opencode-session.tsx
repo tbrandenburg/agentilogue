@@ -35,6 +35,7 @@ export const AGENT_THREAD_COMPONENTS: ThreadComponents = {
 type Session = {
   readonly id: string;
   readonly projectName: string;
+  readonly openCodeProjectName: string;
   readonly runTarget: RunTargetId | null;
   readonly model?: string;
 };

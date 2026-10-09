@@ -6,6 +6,7 @@ import type { RunTargetId } from "@/lib/run-target";
 
 type SessionControlsConfig = {
   projectName: string;
+  openCodeProjectName: string;
   runTarget: RunTargetId | null;
   model?: string;
 };

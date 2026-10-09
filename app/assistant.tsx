@@ -15,16 +15,23 @@ type ChatSession = {
   id: string;
   title: string;
   projectName: string;
+  openCodeProjectName: string;
   runTarget: RunTargetId | null;
   model?: string;
 };
 
 const THREAD_COMPONENTS: ThreadComponents = AGENT_THREAD_COMPONENTS;
 
-const createSession = (id: string, projectName: string, hasOpenAIKey: boolean): ChatSession => ({
+const createSession = (
+  id: string,
+  projectName: string,
+  openCodeProjectName: string,
+  hasOpenAIKey: boolean,
+): ChatSession => ({
   id,
   title: `chat ${id}`,
   projectName,
+  openCodeProjectName,
   runTarget: hasOpenAIKey ? "openai:vercel-ai" : null,
   model: undefined,
 });
@@ -32,11 +39,19 @@ const createSession = (id: string, projectName: string, hasOpenAIKey: boolean): 
 type AssistantProps = {
   hasOpenAIKey: boolean;
   hasOpenCodeApi: boolean;
+  openCodeProjectName: string;
   projectName: string;
 };
 
-export const Assistant = ({ hasOpenAIKey, hasOpenCodeApi, projectName }: AssistantProps) => {
-  const [sessions, setSessions] = useState(() => [createSession("1", projectName, hasOpenAIKey)]);
+export const Assistant = ({
+  hasOpenAIKey,
+  hasOpenCodeApi,
+  openCodeProjectName,
+  projectName,
+}: AssistantProps) => {
+  const [sessions, setSessions] = useState(() => [
+    createSession("1", projectName, openCodeProjectName, hasOpenAIKey),
+  ]);
   const [activeId, setActiveId] = useState("1");
   const [runningIds, setRunningIds] = useState<string[]>([]);
   const nextId = useRef(2);
@@ -56,7 +71,7 @@ export const Assistant = ({ hasOpenAIKey, hasOpenCodeApi, projectName }: Assista
     const title = `chat ${nextId.current++}`;
     setSessions((current) => [
       ...current,
-      { ...createSession(id, projectName, hasOpenAIKey), title },
+      { ...createSession(id, projectName, openCodeProjectName, hasOpenAIKey), title },
     ]);
     setActiveId(id);
   };

@@ -21,6 +21,7 @@ import { CommandItem } from "@/components/ui/command";
 
 type Config = {
   projectName: string;
+  openCodeProjectName: string;
   runTarget: RunTargetId | null;
   model?: string;
 };
@@ -117,11 +118,13 @@ export function SessionControls({ config, hasOpenAIKey, hasOpenCodeApi, onChange
   ];
   const tierIds = new Set(tierModels.map(([, id]) => id));
   const modelById = new Map(options.map((option) => [option.id, option]));
+  const projectName =
+    config.runTarget === "opencode:cli" ? config.openCodeProjectName : config.projectName;
 
   return (
     <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1">
       <span className="max-w-40 truncate px-1.5 py-1 text-xs text-muted-foreground">
-        Project · {config.projectName}
+        Project · {projectName}
       </span>
       <Picker
         label="Run with"
