@@ -229,8 +229,10 @@ export const RunSnapshotSchema = z
       .map((part) => part.toolCallId);
     if (
       messageKeys.size !== messagePartKeys.length ||
+      new Set(messagePartKeys).size !== messagePartKeys.length ||
       messagePartKeys.some((key) => !messageKeys.has(key)) ||
       toolIds.size !== toolPartIds.length ||
+      new Set(toolPartIds).size !== toolPartIds.length ||
       toolPartIds.some((id) => !toolIds.has(id))
     ) {
       context.addIssue({
