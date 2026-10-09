@@ -21,12 +21,14 @@ import { CommandItem } from "@/components/ui/command";
 
 type Config = {
   projectName: string;
+  openCodeProjectName: string;
   runTarget: RunTargetId | null;
   model?: string;
 };
 type Props = {
   config: Config;
   hasOpenAIKey: boolean;
+  hasOpenCodeApi: boolean;
   onChange: (patch: Partial<Config>) => void;
 };
 
@@ -94,7 +96,7 @@ function Option({
   );
 }
 
-export function SessionControls({ config, hasOpenAIKey, onChange }: Props) {
+export function SessionControls({ config, hasOpenAIKey, hasOpenCodeApi, onChange }: Props) {
   const hasMessages = useAuiState((state) => state.thread.messages.length > 0);
   const isRunning = useAuiState((state) => state.thread.isRunning);
   const isSubmitting = useAuiState((state) => state.composer.submission !== undefined);
@@ -116,11 +118,13 @@ export function SessionControls({ config, hasOpenAIKey, onChange }: Props) {
   ];
   const tierIds = new Set(tierModels.map(([, id]) => id));
   const modelById = new Map(options.map((option) => [option.id, option]));
+  const projectName =
+    config.runTarget === "opencode:cli" ? config.openCodeProjectName : config.projectName;
 
   return (
     <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1">
       <span className="max-w-40 truncate px-1.5 py-1 text-xs text-muted-foreground">
-        Project · {config.projectName}
+        Project · {projectName}
       </span>
       <Picker
         label="Run with"
@@ -143,7 +147,13 @@ export function SessionControls({ config, hasOpenAIKey, onChange }: Props) {
           <Option
             key={runTarget.id}
             value={runTarget.id}
-            disabled={runTarget.id === "openai:vercel-ai" ? !hasOpenAIKey : true}
+            disabled={
+              runTarget.id === "openai:vercel-ai"
+                ? !hasOpenAIKey
+                : runTarget.id === "opencode:cli"
+                  ? !hasOpenCodeApi
+                  : true
+            }
           >
             {runTarget.label}
           </Option>

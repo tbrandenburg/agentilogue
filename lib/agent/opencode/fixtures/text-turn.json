@@ -1,0 +1,26 @@
+{
+  "protocolVersion": 1,
+  "updates": [
+    {
+      "sessionUpdate": "agent_message_chunk",
+      "messageId": "<redacted-message-id>",
+      "content": { "type": "text", "text": "ACP" }
+    },
+    {
+      "sessionUpdate": "agent_message_chunk",
+      "messageId": "<redacted-message-id>",
+      "content": { "type": "text", "text": "_PRO" }
+    },
+    {
+      "sessionUpdate": "agent_message_chunk",
+      "messageId": "<redacted-message-id>",
+      "content": { "type": "text", "text": "OF" }
+    },
+    {
+      "sessionUpdate": "agent_message_chunk",
+      "messageId": "<redacted-message-id>",
+      "content": { "type": "text", "text": "_OK" }
+    }
+  ],
+  "stopReason": "end_turn"
+}

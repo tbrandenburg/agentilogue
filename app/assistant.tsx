@@ -7,39 +7,59 @@ import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Thread } from "@/components/assistant-ui/elements/thread.aui";
 import type { ThreadComponents } from "@/components/assistant-ui/elements/thread.aui";
-import {
-  AgentilogueSessionControlsSlot,
-  SessionControlsProvider,
-} from "@/components/assistant-ui/elements/session-controls-slot";
+import { SessionControlsProvider } from "@/components/assistant-ui/elements/session-controls-slot";
 import type { RunTargetId } from "@/lib/run-target";
+import { AGENT_THREAD_COMPONENTS, OpenCodeSessionRuntime } from "./opencode-session";
 
 type ChatSession = {
   id: string;
   title: string;
   projectName: string;
+  openCodeProjectName: string;
   runTarget: RunTargetId | null;
   model?: string;
 };
 
-const THREAD_COMPONENTS: ThreadComponents = {
-  ComposerActionLeft: AgentilogueSessionControlsSlot,
-};
+const THREAD_COMPONENTS: ThreadComponents = AGENT_THREAD_COMPONENTS;
 
-const createSession = (id: string, projectName: string, hasOpenAIKey: boolean): ChatSession => ({
+export const createConversationId = () => crypto.randomUUID();
+
+const createSession = (
+  id: string,
+  projectName: string,
+  openCodeProjectName: string,
+  hasOpenAIKey: boolean,
+): ChatSession => ({
   id,
   title: `chat ${id}`,
   projectName,
+  openCodeProjectName,
   runTarget: hasOpenAIKey ? "openai:vercel-ai" : null,
   model: undefined,
 });
 
-type AssistantProps = { hasOpenAIKey: boolean; projectName: string };
+type AssistantProps = {
+  hasOpenAIKey: boolean;
+  hasOpenCodeApi: boolean;
+  initialConversationId: string;
+  openCodeProjectName: string;
+  projectName: string;
+};
 
-export const Assistant = ({ hasOpenAIKey, projectName }: AssistantProps) => {
-  const [sessions, setSessions] = useState(() => [createSession("1", projectName, hasOpenAIKey)]);
-  const [activeId, setActiveId] = useState("1");
+export const Assistant = ({
+  hasOpenAIKey,
+  hasOpenCodeApi,
+  initialConversationId,
+  openCodeProjectName,
+  projectName,
+}: AssistantProps) => {
+  const [initialSession] = useState(() =>
+    createSession(initialConversationId, projectName, openCodeProjectName, hasOpenAIKey),
+  );
+  const [sessions, setSessions] = useState([initialSession]);
+  const [activeId, setActiveId] = useState(initialSession.id);
   const [runningIds, setRunningIds] = useState<string[]>([]);
-  const nextId = useRef(2);
+  const nextTitleNumber = useRef(2);
 
   const updateSession = (id: string, update: Partial<ChatSession>) => {
     setSessions((current) =>
@@ -52,11 +72,11 @@ export const Assistant = ({ hasOpenAIKey, projectName }: AssistantProps) => {
     );
   }, []);
   const addSession = () => {
-    const id = `${Date.now()}-${nextId.current}`;
-    const title = `chat ${nextId.current++}`;
+    const id = createConversationId();
+    const title = `chat ${nextTitleNumber.current++}`;
     setSessions((current) => [
       ...current,
-      { ...createSession(id, projectName, hasOpenAIKey), title },
+      { ...createSession(id, projectName, openCodeProjectName, hasOpenAIKey), title },
     ]);
     setActiveId(id);
   };
@@ -125,6 +145,7 @@ export const Assistant = ({ hasOpenAIKey, projectName }: AssistantProps) => {
               <SessionRuntime
                 session={session}
                 hasOpenAIKey={hasOpenAIKey}
+                hasOpenCodeApi={hasOpenCodeApi}
                 isActive={activeId === session.id}
                 onUpdate={(update) => updateSession(session.id, update)}
                 onRunningChange={updateRunning}
@@ -140,14 +161,23 @@ export const Assistant = ({ hasOpenAIKey, projectName }: AssistantProps) => {
 type SessionRuntimeProps = {
   session: ChatSession;
   hasOpenAIKey: boolean;
+  hasOpenCodeApi: boolean;
   isActive: boolean;
   onUpdate: (update: Partial<ChatSession>) => void;
   onRunningChange: (id: string, running: boolean) => void;
 };
 
-const SessionRuntime = ({
+const SessionRuntime = (props: SessionRuntimeProps) =>
+  props.session.runTarget === "opencode:cli" ? (
+    <OpenCodeSessionRuntime {...props} />
+  ) : (
+    <AiSdkSessionRuntime {...props} />
+  );
+
+const AiSdkSessionRuntime = ({
   session,
   hasOpenAIKey,
+  hasOpenCodeApi,
   isActive,
   onUpdate,
   onRunningChange,
@@ -159,7 +189,6 @@ const SessionRuntime = ({
   );
   const runtime = useChatRuntime({
     isSendDisabled: !canSend,
-    // AI SDK automatic tool continuations run outside the composer send action.
     sendAutomaticallyWhen: (options) =>
       canSend && lastAssistantMessageIsCompleteWithToolCalls(options),
     transport: new AssistantChatTransport({ api: "/api/chat" }),
@@ -169,7 +198,12 @@ const SessionRuntime = ({
     <AssistantRuntimeProvider runtime={runtime}>
       <ModelContextBridge model={session.model} />
       <RunningStateReporter onRunningChange={reportRunning} />
-      <SessionControlsProvider config={session} hasOpenAIKey={hasOpenAIKey} onChange={onUpdate}>
+      <SessionControlsProvider
+        config={session}
+        hasOpenAIKey={hasOpenAIKey}
+        hasOpenCodeApi={hasOpenCodeApi}
+        onChange={onUpdate}
+      >
         <Thread components={THREAD_COMPONENTS} autoFocus={isActive} />
       </SessionControlsProvider>
     </AssistantRuntimeProvider>

@@ -6,6 +6,7 @@ import type { RunTargetId } from "@/lib/run-target";
 
 type SessionControlsConfig = {
   projectName: string;
+  openCodeProjectName: string;
   runTarget: RunTargetId | null;
   model?: string;
 };
@@ -13,6 +14,7 @@ type SessionControlsConfig = {
 type SessionControlsContextValue = {
   config: SessionControlsConfig;
   hasOpenAIKey: boolean;
+  hasOpenCodeApi: boolean;
   onChange: (patch: Partial<SessionControlsConfig>) => void;
 };
 
@@ -35,6 +37,7 @@ export function AgentilogueSessionControlsSlot() {
     <SessionControls
       config={value.config}
       hasOpenAIKey={value.hasOpenAIKey}
+      hasOpenCodeApi={value.hasOpenCodeApi}
       onChange={value.onChange}
     />
   );
