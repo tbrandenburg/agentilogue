@@ -141,7 +141,11 @@ export function assistantMessageFromSnapshot(
       const message = snapshot.messages.find(
         (item) => item.id === part.messageId && item.segmentId === part.segmentId,
       );
-      return { type: "text", id: part.segmentId, text: message?.text ?? "" };
+      return {
+        type: "text",
+        id: JSON.stringify([part.messageId, part.segmentId]),
+        text: message?.text ?? "",
+      };
     }
     const tool = snapshot.tools.find((item) => item.id === part.toolCallId);
     const approval = [...permissions.values()]
@@ -187,6 +191,12 @@ export function assistantMessageFromSnapshot(
       type: "text",
       id: "run-outcome",
       text: `OpenCode run ${outcome.kind}: ${outcome.message}`,
+    });
+  else if (outcome?.kind === "stopped")
+    content.push({
+      type: "text",
+      id: "run-outcome",
+      text: `OpenCode stopped the run (${outcome.reason}).`,
     });
   else if (outcome?.kind === "cancelled")
     content.push({

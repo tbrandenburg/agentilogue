@@ -59,6 +59,7 @@ export function OpenCodeSessionRuntime({
 }: OpenCodeSessionRuntimeProps) {
   const [messages, setMessages] = useState<ThreadMessageLike[]>([]);
   const [isRunning, setIsRunning] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
   const activeRunId = useRef<string | null>(null);
   const projection = useRef<(AssistantProjection & { messageId: string; createdAt: Date }) | null>(
     null,
@@ -184,6 +185,7 @@ export function OpenCodeSessionRuntime({
         await observeOpenCodeRun(
           runId,
           consumeObservation(assistantId, assistantCreatedAt, permissions),
+          setIsReconnecting,
         );
         if (
           projection.current?.messageId === assistantId &&
@@ -221,9 +223,13 @@ export function OpenCodeSessionRuntime({
           return current.map((item) => (item.id === assistantId ? failed : item));
         });
       } finally {
-        if (runId === undefined || activeRunId.current === runId) activeRunId.current = null;
-        setIsRunning(false);
-        if (projection.current?.messageId === assistantId) projection.current = null;
+        const terminal = projection.current?.snapshot.phase !== "running";
+        if (runId === undefined || terminal) {
+          if (runId === undefined || activeRunId.current === runId) activeRunId.current = null;
+          setIsRunning(false);
+          setIsReconnecting(false);
+          if (projection.current?.messageId === assistantId) projection.current = null;
+        }
       }
     },
     [consumeObservation, session.id],
@@ -288,6 +294,12 @@ export function OpenCodeSessionRuntime({
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <RunningStateReporter onRunningChange={reportRunning} />
+      {isReconnecting ? (
+        <p role="status" className="px-4 py-1 text-xs text-amber-700 dark:text-amber-300">
+          OpenCode observation disconnected; reconnecting. The run remains active and can still be
+          stopped.
+        </p>
+      ) : null}
       <SessionControlsProvider
         config={session}
         hasOpenAIKey={hasOpenAIKey}
@@ -313,14 +325,17 @@ function RunningStateReporter({
 async function observeOpenCodeRun(
   runId: string,
   onObservation: (observation: unknown) => void,
+  onConnectionState: (reconnecting: boolean) => void,
 ): Promise<void> {
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  let attempt = 0;
+  while (true) {
     try {
       const controller = new AbortController();
       const response = await fetch(`/api/agent?runId=${encodeURIComponent(runId)}`, {
         signal: controller.signal,
       });
       if (!response.ok || !response.body) throw new Error("OpenCode observer is unavailable.");
+      onConnectionState(false);
       const reader = response.body
         .pipeThrough(new AssistantTransportDecoder({ strict: true }))
         .getReader();
@@ -352,9 +367,11 @@ async function observeOpenCodeRun(
       }
       if (finished) return;
       throw new Error("OpenCode observer ended before a terminal result.");
-    } catch (error) {
-      if (attempt === 2) throw error;
-      await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+    } catch {
+      onConnectionState(true);
+      const delay = Math.min(250 * 2 ** attempt, 5_000);
+      attempt = Math.min(attempt + 1, 5);
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
 }

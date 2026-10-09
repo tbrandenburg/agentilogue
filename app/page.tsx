@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Assistant } from "./assistant";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +17,7 @@ export default function Home() {
     <Assistant
       hasOpenAIKey={hasOpenAIKey}
       hasOpenCodeApi={hasOpenCodeApi}
+      initialConversationId={randomUUID()}
       openCodeProjectName={openCodeProjectName}
       projectName={projectName}
     />

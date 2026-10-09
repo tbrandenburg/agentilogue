@@ -22,6 +22,8 @@ type ChatSession = {
 
 const THREAD_COMPONENTS: ThreadComponents = AGENT_THREAD_COMPONENTS;
 
+export const createConversationId = () => crypto.randomUUID();
+
 const createSession = (
   id: string,
   projectName: string,
@@ -39,6 +41,7 @@ const createSession = (
 type AssistantProps = {
   hasOpenAIKey: boolean;
   hasOpenCodeApi: boolean;
+  initialConversationId: string;
   openCodeProjectName: string;
   projectName: string;
 };
@@ -46,15 +49,17 @@ type AssistantProps = {
 export const Assistant = ({
   hasOpenAIKey,
   hasOpenCodeApi,
+  initialConversationId,
   openCodeProjectName,
   projectName,
 }: AssistantProps) => {
-  const [sessions, setSessions] = useState(() => [
-    createSession("1", projectName, openCodeProjectName, hasOpenAIKey),
-  ]);
-  const [activeId, setActiveId] = useState("1");
+  const [initialSession] = useState(() =>
+    createSession(initialConversationId, projectName, openCodeProjectName, hasOpenAIKey),
+  );
+  const [sessions, setSessions] = useState([initialSession]);
+  const [activeId, setActiveId] = useState(initialSession.id);
   const [runningIds, setRunningIds] = useState<string[]>([]);
-  const nextId = useRef(2);
+  const nextTitleNumber = useRef(2);
 
   const updateSession = (id: string, update: Partial<ChatSession>) => {
     setSessions((current) =>
@@ -67,8 +72,8 @@ export const Assistant = ({
     );
   }, []);
   const addSession = () => {
-    const id = `${Date.now()}-${nextId.current}`;
-    const title = `chat ${nextId.current++}`;
+    const id = createConversationId();
+    const title = `chat ${nextTitleNumber.current++}`;
     setSessions((current) => [
       ...current,
       { ...createSession(id, projectName, openCodeProjectName, hasOpenAIKey), title },

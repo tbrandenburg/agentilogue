@@ -85,6 +85,10 @@ export type PermissionDecision = Readonly<z.infer<typeof PermissionDecisionSchem
 
 const SuccessOutcomeSchema = z.strictObject({ kind: z.literal("success") });
 const CancelledOutcomeSchema = z.strictObject({ kind: z.literal("cancelled") });
+const StoppedOutcomeSchema = z.strictObject({
+  kind: z.literal("stopped"),
+  reason: z.enum(["max_tokens", "max_turn_requests", "refusal"]),
+});
 const FailedOutcomeSchema = z.strictObject({
   kind: z.literal("failed"),
   message: z.string().min(1).max(2048),
@@ -96,11 +100,13 @@ const UnknownOutcomeSchema = z.strictObject({
 const ConfirmedOutcomeSchema = z.discriminatedUnion("kind", [
   SuccessOutcomeSchema,
   CancelledOutcomeSchema,
+  StoppedOutcomeSchema,
   FailedOutcomeSchema,
 ]);
 export const RunOutcomeSchema = z.discriminatedUnion("kind", [
   SuccessOutcomeSchema,
   CancelledOutcomeSchema,
+  StoppedOutcomeSchema,
   FailedOutcomeSchema,
   UnknownOutcomeSchema,
 ]);

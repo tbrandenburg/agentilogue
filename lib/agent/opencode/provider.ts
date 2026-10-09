@@ -1,5 +1,6 @@
 import * as acp from "@agentclientprotocol/sdk";
 import { runOpenCodeAcpPrompt } from "./acp-client";
+import type { OpenCodeAcpCallbacks } from "./acp-client";
 import { projectOpenCodeUpdate } from "./update-projection";
 import {
   AgentRunEventSchema,
@@ -31,6 +32,17 @@ interface PendingPermission {
   readonly resolve: (selected: string | undefined) => void;
 }
 
+type AcpStopReason = acp.StopReason;
+type PromptRunner = (
+  config: {
+    readonly cwd: string;
+    readonly executable: string;
+    readonly providerSessionId?: string;
+  },
+  prompt: string,
+  callbacks: OpenCodeAcpCallbacks,
+) => Promise<acp.StopReason>;
+
 interface Observer {
   readonly queue: RunObservation[];
   wake?: () => void;
@@ -50,8 +62,10 @@ interface Run {
   sessionId?: string;
   promptActive: boolean;
   cancelSent: boolean;
+  cancellationAccepted: boolean;
   cancel?: () => Promise<void>;
   cancelPromise?: Promise<void>;
+  cancelFailure?: unknown;
   terminalOutcome?: RunOutcome;
 }
 
@@ -69,10 +83,12 @@ export class OpenCodeProvider implements AgentProvider {
   private readonly activeConversations = new Set<ConversationId>();
   private readonly executable: string;
   private readonly cwd: string;
+  private readonly runPrompt: PromptRunner;
 
-  constructor(config: { executable?: string; cwd: string }) {
+  constructor(config: { executable?: string; cwd: string; runPrompt?: PromptRunner }) {
     this.executable = config.executable ?? "opencode";
     this.cwd = config.cwd;
+    this.runPrompt = config.runPrompt ?? runOpenCodeAcpPrompt;
   }
 
   describe() {
@@ -159,19 +175,13 @@ export class OpenCodeProvider implements AgentProvider {
   }
 
   async cancel(runId: RunId) {
-    const run = this.getRun(runId);
+    const run = this.runs.get(runId);
+    if (!run) throw new Error("Unknown run");
     if (!run.promptActive) return "already-ended" as const;
-    if (!run.sessionId || !run.cancel)
-      throw new Error("Native cancellation is not yet dispatchable");
-    if (!run.cancelSent) {
-      run.cancelPromise ??= run.cancel();
-      await run.cancelPromise;
-      run.cancelSent = true;
-      for (const [permissionId, permission] of run.permissions) {
-        run.permissions.delete(permissionId);
-        permission.resolve(undefined);
-      }
-    }
+    run.cancellationAccepted = true;
+    this.settlePermissions(run);
+    if (run.cancel) this.dispatchCancel(run);
+    if (run.cancelPromise) await run.cancelPromise;
     return "dispatched" as const;
   }
 
@@ -183,6 +193,7 @@ export class OpenCodeProvider implements AgentProvider {
       throw new Error("Permission is stale or option was not offered");
     run.permissions.delete(permissionId);
     pending.resolve(decision.optionId);
+    this.publish(run, { type: "permission.resolved", permissionId: permissionId as never });
     return "dispatched" as const;
   }
 
@@ -198,6 +209,7 @@ export class OpenCodeProvider implements AgentProvider {
       fallbackMessageId: `msg_${crypto.randomUUID()}`,
       promptActive: true,
       cancelSent: false,
+      cancellationAccepted: false,
       snapshot: RunSnapshotSchema.parse({
         runId: request.runId,
         conversationId: request.conversationId,
@@ -261,7 +273,7 @@ export class OpenCodeProvider implements AgentProvider {
 
   private async execute(run: Run, prompt: string): Promise<void> {
     try {
-      const stopReason = await runOpenCodeAcpPrompt(
+      const stopReason = await this.runPrompt(
         {
           cwd: run.cwd,
           executable: this.executable,
@@ -277,6 +289,7 @@ export class OpenCodeProvider implements AgentProvider {
           onSession: (sessionId, cancel) => {
             run.sessionId = sessionId;
             run.cancel = cancel;
+            if (run.cancellationAccepted) this.dispatchCancel(run);
             this.conversationSessions.set(
               run.request.conversationId,
               sessionId as ProviderSessionId,
@@ -289,16 +302,19 @@ export class OpenCodeProvider implements AgentProvider {
         },
       );
       run.promptActive = false;
-      this.finish(run, stopReason === "cancelled" ? { kind: "cancelled" } : { kind: "success" });
+      if (run.cancelFailure !== undefined) throw run.cancelFailure;
+      this.finish(run, this.mapStopReason(stopReason));
     } catch (error) {
       this.finish(
         run,
-        error instanceof acp.RequestError
-          ? { kind: "failed", message: errorMessage(error) }
-          : { kind: "unknown", message: errorMessage(error) },
+        run.cancelFailure !== undefined
+          ? { kind: "unknown", message: errorMessage(run.cancelFailure) }
+          : error instanceof acp.RequestError
+            ? { kind: "failed", message: errorMessage(error) }
+            : { kind: "unknown", message: errorMessage(error) },
       );
     } finally {
-      for (const permission of run.permissions.values()) permission.resolve(undefined);
+      this.settlePermissions(run);
     }
   }
 
@@ -306,6 +322,8 @@ export class OpenCodeProvider implements AgentProvider {
     run: Run,
     params: acp.RequestPermissionRequest,
   ): Promise<acp.RequestPermissionResponse> {
+    if (run.cancellationAccepted || run.snapshot.phase !== "running")
+      return { outcome: { outcome: "cancelled" } };
     const id = crypto.randomUUID();
     let settle!: (selected: string | undefined) => void;
     const selected = new Promise<string | undefined>((resolve) => {
@@ -329,8 +347,8 @@ export class OpenCodeProvider implements AgentProvider {
     run.permissions.set(id, { id, request: permission, resolve: settle });
     this.publish(run, { type: "permission.requested", permission });
     const optionId = await selected;
-    run.permissions.delete(id);
-    if (run.snapshot.phase === "running")
+    const wasPending = run.permissions.delete(id);
+    if (wasPending && run.snapshot.phase === "running")
       this.publish(run, { type: "permission.resolved", permissionId: id as never });
     return {
       outcome:
@@ -338,17 +356,49 @@ export class OpenCodeProvider implements AgentProvider {
     };
   }
 
-  private finish(
-    run: Run,
-    outcome: { kind: "success" | "cancelled" } | { kind: "failed" | "unknown"; message: string },
-  ) {
+  private finish(run: Run, outcome: RunOutcome) {
     if (run.snapshot.phase !== "running") return;
     run.promptActive = false;
     if (outcome.kind !== "unknown" || run.sessionId === undefined)
       this.activeConversations.delete(run.request.conversationId);
-    for (const permission of run.permissions.values()) permission.resolve(undefined);
-    run.permissions.clear();
+    this.settlePermissions(run);
     this.publish(run, { type: "run.finished", outcome });
+  }
+
+  private settlePermissions(run: Run) {
+    for (const [permissionId, permission] of run.permissions) {
+      run.permissions.delete(permissionId);
+      permission.resolve(undefined);
+      if (run.snapshot.phase === "running")
+        this.publish(run, { type: "permission.resolved", permissionId: permissionId as never });
+    }
+  }
+
+  private dispatchCancel(run: Run) {
+    if (run.cancelSent || !run.cancel) return;
+    run.cancelSent = true;
+    const cancel = run.cancel;
+    run.cancelPromise = Promise.resolve().then(() => cancel());
+    void run.cancelPromise.catch((error: unknown) => {
+      run.cancelFailure = error;
+    });
+  }
+
+  private mapStopReason(reason: AcpStopReason): RunOutcome {
+    switch (reason) {
+      case "cancelled":
+        return { kind: "cancelled" };
+      case "end_turn":
+        return { kind: "success" };
+      case "max_tokens":
+      case "max_turn_requests":
+      case "refusal":
+        return { kind: "stopped", reason };
+      default: {
+        const exhaustive: never = reason;
+        return exhaustive;
+      }
+    }
   }
 }
 

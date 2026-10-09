@@ -16,10 +16,15 @@ export function projectOpenCodeUpdate(
   if (update.sessionUpdate === "agent_message_chunk") {
     const id =
       "messageId" in update && update.messageId ? update.messageId : state.fallbackMessageId;
-    const segmentId = "text";
     const channel = "assistant" as const;
     const text = "content" in update && "text" in update.content ? update.content.text : "";
     if (!text) return;
+    const lastPart = state.parts.at(-1);
+    const lastMessage =
+      lastPart?.type === "message" && lastPart.messageId === id
+        ? state.messages.get(`${id}\0${lastPart.segmentId}\0${channel}`)
+        : undefined;
+    const segmentId = lastMessage?.segmentId ?? `text-${state.parts.length}`;
     const key = `${id}\0${segmentId}\0${channel}`;
     const old = state.messages.get(key);
     state.messages.set(key, {
@@ -28,12 +33,7 @@ export function projectOpenCodeUpdate(
       channel,
       text: `${old?.text ?? ""}${text}`,
     });
-    if (
-      !state.parts.some(
-        (part) => part.type === "message" && part.messageId === id && part.segmentId === segmentId,
-      )
-    )
-      state.parts.push({ type: "message", messageId: id as never, segmentId });
+    if (!old) state.parts.push({ type: "message", messageId: id as never, segmentId });
     publish({ type: "message.delta", messageId: id as never, segmentId, channel, text });
     return;
   }

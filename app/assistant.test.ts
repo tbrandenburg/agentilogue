@@ -6,10 +6,84 @@ import {
   RunIdSchema,
   ToolCallIdSchema,
 } from "@/lib/agent/contracts/identifiers";
-import { RunSnapshotSchema, type RunObservation } from "@/lib/agent/contracts/run";
+import type { SessionUpdate } from "@agentclientprotocol/sdk";
+import {
+  RunSnapshotSchema,
+  type AgentRunEvent,
+  type RunMessage,
+  type RunObservation,
+  type RunTool,
+} from "@/lib/agent/contracts/run";
+import { projectOpenCodeUpdate } from "@/lib/agent/opencode/update-projection";
 import { applyAgentObservation, assistantMessageFromSnapshot } from "./opencode-projection";
 
 describe("OpenCode assistant-ui projection", () => {
+  it("reconstructs interleaved text/tool segments in event order with unique UI part IDs", () => {
+    let snapshot = RunSnapshotSchema.parse({
+      runId: RunIdSchema.parse("00000000-0000-4000-8000-000000000031"),
+      conversationId: ConversationIdSchema.parse("tab-interleaved"),
+      lastSequence: 0,
+      phase: "running",
+      messages: [],
+      tools: [],
+      parts: [],
+      pendingPermissions: [],
+    });
+    const state = {
+      fallbackMessageId: "fallback",
+      messages: new Map<string, RunMessage>(),
+      tools: new Map<string, RunTool>(),
+      parts: [] as typeof snapshot.parts,
+    };
+    const updates = [
+      {
+        sessionUpdate: "agent_message_chunk",
+        messageId: "native-one",
+        content: { type: "text", text: "A" },
+      },
+      {
+        sessionUpdate: "agent_message_chunk",
+        messageId: "native-one",
+        content: { type: "text", text: "B" },
+      },
+      {
+        sessionUpdate: "tool_call",
+        toolCallId: "tool-one",
+        title: "Tool",
+        kind: "execute",
+        status: "pending",
+      },
+      {
+        sessionUpdate: "agent_message_chunk",
+        messageId: "native-one",
+        content: { type: "text", text: "C" },
+      },
+      {
+        sessionUpdate: "agent_message_chunk",
+        messageId: "native-two",
+        content: { type: "text", text: "D" },
+      },
+    ] as SessionUpdate[];
+    const events: AgentRunEvent[] = [];
+    for (const update of updates)
+      projectOpenCodeUpdate(state, update, (event) => events.push(event));
+    for (const [index, event] of events.entries())
+      snapshot = applyAgentObservation(snapshot, { type: "event", sequence: index + 1, event });
+
+    assert.deepEqual(snapshot.parts, state.parts);
+    assert.deepEqual(snapshot.messages, [...state.messages.values()]);
+    const message = assistantMessageFromSnapshot(snapshot, "assistant", new Map(), new Date(0));
+    if (typeof message.content === "string") throw new Error("Expected structured assistant parts");
+    assert.deepEqual(
+      message.content.map((part) =>
+        part.type === "text" ? part.text : part.type === "tool-call" ? part.toolCallId : part.type,
+      ),
+      ["AB", "tool-one", "C", "D"],
+    );
+    const textIds = message.content.filter((part) => part.type === "text").map((part) => part.id);
+    assert.equal(new Set(textIds).size, textIds.length);
+  });
+
   it("appends text and merges partial tool updates without changing order", () => {
     let snapshot = RunSnapshotSchema.parse({
       runId: RunIdSchema.parse("00000000-0000-4000-8000-000000000025"),
@@ -195,6 +269,38 @@ describe("OpenCode assistant-ui projection", () => {
         (part) => part.type === "text" && part.text.includes("cancelled"),
       ),
       false,
+    );
+  });
+
+  it("renders abnormal ACP stop reasons as incomplete, not successful", () => {
+    const running = RunSnapshotSchema.parse({
+      runId: RunIdSchema.parse("00000000-0000-4000-8000-000000000032"),
+      conversationId: ConversationIdSchema.parse("tab-stopped"),
+      lastSequence: 0,
+      phase: "running",
+      messages: [],
+      tools: [],
+      parts: [],
+      pendingPermissions: [],
+    });
+    const stopped = applyAgentObservation(running, {
+      type: "event",
+      sequence: 1,
+      event: { type: "run.finished", outcome: { kind: "stopped", reason: "max_tokens" } },
+    });
+    const message = assistantMessageFromSnapshot(
+      stopped,
+      "assistant-stopped",
+      new Map(),
+      new Date(0),
+    );
+
+    assert.equal(message.status?.type, "incomplete");
+    if (typeof message.content === "string") throw new Error("Expected structured assistant parts");
+    assert.ok(
+      message.content.some(
+        (part) => part.type === "text" && part.text.includes("stopped the run (max_tokens)"),
+      ),
     );
   });
 
