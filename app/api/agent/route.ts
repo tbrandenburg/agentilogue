@@ -108,54 +108,76 @@ export function createPostHandler(postProvider: AgentProvider | undefined) {
 
 export const POST = createPostHandler(provider);
 
-export async function GET(request: Request) {
-  if (!isTrustedLocalRequest(request, false))
-    return json({ error: "Untrusted agent request" }, 403);
-  if (!provider) return json({ error: "Agent API is disabled" }, 404);
-  const url = new URL(request.url);
-  const parsed = RunIdSchema.safeParse(url.searchParams.get("runId"));
-  if (!parsed.success) return json({ error: "Invalid run ID" }, 400);
-  const encoder = new AssistantTransportEncoder();
-  const observerAbort = new AbortController();
-  const abortObserver = () => observerAbort.abort();
-  request.signal.addEventListener("abort", abortObserver, { once: true });
-  if (request.signal.aborted) abortObserver();
-  const writer = encoder.writable.getWriter();
-  const writeObservation = (value: unknown): Promise<void> => {
-    const jsonValue = JSON.parse(JSON.stringify(value)) as ReadonlyJSONValue;
-    const chunk: AssistantStreamChunk = {
-      type: "update-state",
-      path: [],
-      operations: [{ type: "set", path: [], value: jsonValue }],
-    };
-    return writer.write(chunk);
-  };
-  void (async () => {
+export function createGetHandler(getProvider: AgentProvider | undefined) {
+  return async function GET(request: Request) {
+    if (!isTrustedLocalRequest(request, false))
+      return json({ error: "Untrusted agent request" }, 403);
+    if (!getProvider) return json({ error: "Agent API is disabled" }, 404);
+    const url = new URL(request.url);
+    const parsed = RunIdSchema.safeParse(url.searchParams.get("runId"));
+    if (!parsed.success) return json({ error: "Invalid run ID" }, 400);
+    const observerAbort = new AbortController();
+    const abortObserver = () => observerAbort.abort();
+    request.signal.addEventListener("abort", abortObserver, { once: true });
+    if (request.signal.aborted) abortObserver();
+    const observations = getProvider
+      .observe(parsed.data, { signal: observerAbort.signal })
+      [Symbol.asyncIterator]();
+    let first: IteratorResult<RunObservation>;
     try {
-      for await (const observation of provider.observe(parsed.data, {
-        signal: observerAbort.signal,
-      })) {
-        await writeObservation(observation);
-      }
-      await writer.close();
+      first = await observations.next();
     } catch {
-      if (!observerAbort.signal.aborted) {
-        try {
-          await writer.write({ type: "error", path: [], error: "Run observation unavailable" });
-          await writer.close();
-        } catch {
-          observerAbort.abort();
-        }
-      }
-    } finally {
+      await observations.return?.();
       request.signal.removeEventListener("abort", abortObserver);
+      return json({ error: "Run not found" }, 404);
     }
-  })();
-  return new Response(encoder.readable, {
-    headers: {
-      ...Object.fromEntries(encoder.headers),
-      "Cache-Control": "no-cache, no-transform",
-      "X-Content-Type-Options": "nosniff",
-    },
-  });
+    if (!first.value || first.value.type !== "snapshot") {
+      await observations.return?.();
+      request.signal.removeEventListener("abort", abortObserver);
+      return json({ error: "Run not found" }, 404);
+    }
+    const encoder = new AssistantTransportEncoder();
+    const writer = encoder.writable.getWriter();
+    const writeObservation = (value: unknown): Promise<void> => {
+      const jsonValue = JSON.parse(JSON.stringify(value)) as ReadonlyJSONValue;
+      const chunk: AssistantStreamChunk = {
+        type: "update-state",
+        path: [],
+        operations: [{ type: "set", path: [], value: jsonValue }],
+      };
+      return writer.write(chunk);
+    };
+    void (async () => {
+      try {
+        await writeObservation(first.value);
+        while (!observerAbort.signal.aborted) {
+          const next = await observations.next();
+          if (next.done) break;
+          await writeObservation(next.value);
+        }
+        await writer.close();
+      } catch {
+        if (!observerAbort.signal.aborted) {
+          try {
+            await writer.write({ type: "error", path: [], error: "Run observation unavailable" });
+            await writer.close();
+          } catch {
+            observerAbort.abort();
+          }
+        }
+      } finally {
+        await observations.return?.();
+        request.signal.removeEventListener("abort", abortObserver);
+      }
+    })();
+    return new Response(encoder.readable, {
+      headers: {
+        ...Object.fromEntries(encoder.headers),
+        "Cache-Control": "no-cache, no-transform",
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
+  };
 }
+
+export const GET = createGetHandler(provider);

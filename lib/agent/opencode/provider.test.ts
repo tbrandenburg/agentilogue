@@ -284,6 +284,88 @@ describe("OpenCodeProvider admission and observation", () => {
     assert.equal(await provider.cancel(request.runId), "already-ended");
   });
 
+  it("expires known completed runs after 30 minutes", async () => {
+    let now = 1_000;
+    const provider = new OpenCodeProvider({
+      cwd: "/tmp",
+      now: () => now,
+      runPrompt: async () => "end_turn",
+    });
+    const request = makeRequest("00000000-0000-4000-8000-000000000040", "expiry-known");
+    await provider.start(request);
+    assert.equal(
+      (await provider.observe(request.runId)[Symbol.asyncIterator]().next()).value?.type,
+      "snapshot",
+    );
+    now += 30 * 60 * 1000;
+    await assert.rejects(
+      provider.observe(request.runId)[Symbol.asyncIterator]().next(),
+      /Unknown run/,
+    );
+  });
+
+  it("retains active runs and their conversation lease beyond the retention period", async () => {
+    let now = 1_000;
+    let finish!: (reason: "end_turn") => void;
+    const provider = new OpenCodeProvider({
+      cwd: "/tmp",
+      now: () => now,
+      runPrompt: async () => await new Promise((resolve) => (finish = resolve)),
+    });
+    const request = makeRequest("00000000-0000-4000-8000-000000000041", "expiry-active");
+    await provider.start(request);
+    now += 60 * 60 * 1000;
+    assert.equal(
+      (await provider.observe(request.runId)[Symbol.asyncIterator]().next()).value?.type,
+      "snapshot",
+    );
+    await assert.rejects(
+      provider.start(makeRequest("00000000-0000-4000-8000-000000000042", "expiry-active")),
+      /active or unknown/,
+    );
+    finish("end_turn");
+  });
+
+  it("retains unknown outcomes and never releases their conversation lease", async () => {
+    let now = 1_000;
+    const provider = new OpenCodeProvider({
+      cwd: "/tmp",
+      now: () => now,
+      runPrompt: async () => {
+        throw new Error("child lost");
+      },
+    });
+    const request = makeRequest("00000000-0000-4000-8000-000000000043", "expiry-unknown");
+    await provider.start(request);
+    const first = await provider.observe(request.runId)[Symbol.asyncIterator]().next();
+    assert.equal(first.value?.type === "snapshot" && first.value.snapshot.phase, "unknown");
+    now += 60 * 60 * 1000;
+    assert.equal(
+      (await provider.observe(request.runId)[Symbol.asyncIterator]().next()).value?.type,
+      "snapshot",
+    );
+    await assert.rejects(
+      provider.start(makeRequest("00000000-0000-4000-8000-000000000044", "expiry-unknown")),
+      /active or unknown/,
+    );
+  });
+
+  it("keeps the already-ended receipt available until its retention deadline", async () => {
+    let now = 1_000;
+    const provider = new OpenCodeProvider({
+      cwd: "/tmp",
+      now: () => now,
+      runPrompt: async () => "end_turn",
+    });
+    const request = makeRequest("00000000-0000-4000-8000-000000000045", "receipt-before-expiry");
+    await provider.start(request);
+    for await (const _observation of provider.observe(request.runId)) {
+      /* drain */
+    }
+    now += 30 * 60 * 1000 - 1;
+    assert.equal(await provider.cancel(request.runId), "already-ended");
+  });
+
   it("supports conversation continuation only in the current server process", () => {
     const provider = new OpenCodeProvider({ cwd: "/tmp", executable: "/bin/false" });
     assert.equal(provider.describe().session.continuation, true);

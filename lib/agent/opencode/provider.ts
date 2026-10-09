@@ -67,7 +67,10 @@ interface Run {
   cancelPromise?: Promise<void>;
   cancelFailure?: unknown;
   terminalOutcome?: RunOutcome;
+  endedAt?: number;
 }
+
+const COMPLETED_RUN_RETENTION_MS = 30 * 60 * 1000;
 
 function errorMessage(error: unknown): string {
   return error instanceof acp.RequestError
@@ -84,11 +87,18 @@ export class OpenCodeProvider implements AgentProvider {
   private readonly executable: string;
   private readonly cwd: string;
   private readonly runPrompt: PromptRunner;
+  private readonly now: () => number;
 
-  constructor(config: { executable?: string; cwd: string; runPrompt?: PromptRunner }) {
+  constructor(config: {
+    executable?: string;
+    cwd: string;
+    runPrompt?: PromptRunner;
+    now?: () => number;
+  }) {
     this.executable = config.executable ?? "opencode";
     this.cwd = config.cwd;
     this.runPrompt = config.runPrompt ?? runOpenCodeAcpPrompt;
+    this.now = config.now ?? Date.now;
   }
 
   describe() {
@@ -112,6 +122,7 @@ export class OpenCodeProvider implements AgentProvider {
   }
 
   async start(request: StartRunRequest) {
+    this.expireCompletedRuns();
     if (!RunIdSchema.safeParse(request.runId).success || this.runs.has(request.runId))
       throw new Error("Run ID is invalid or already exists");
     if (request.model !== undefined || request.agent !== undefined)
@@ -139,6 +150,7 @@ export class OpenCodeProvider implements AgentProvider {
     runId: RunId,
     options: { signal?: AbortSignal } = {},
   ): AsyncIterable<RunObservation> {
+    this.expireCompletedRuns();
     const run = this.runs.get(runId);
     if (!run) throw new Error("Unknown run");
     const snapshot = structuredClone(run.snapshot);
@@ -175,6 +187,7 @@ export class OpenCodeProvider implements AgentProvider {
   }
 
   async cancel(runId: RunId) {
+    this.expireCompletedRuns();
     const run = this.runs.get(runId);
     if (!run) throw new Error("Unknown run");
     if (!run.promptActive) return "already-ended" as const;
@@ -186,6 +199,7 @@ export class OpenCodeProvider implements AgentProvider {
   }
 
   async respond(runId: RunId, decision: { permissionId: string; optionId: string }) {
+    this.expireCompletedRuns();
     const run = this.getRun(runId);
     const permissionId = PermissionIdSchema.parse(decision.permissionId);
     const pending = run.permissions.get(permissionId);
@@ -229,6 +243,13 @@ export class OpenCodeProvider implements AgentProvider {
     if (!run) throw new Error("Unknown run");
     if (run.snapshot.phase !== "running") throw new Error("Run has ended");
     return run;
+  }
+
+  private expireCompletedRuns() {
+    const expiry = this.now() - COMPLETED_RUN_RETENTION_MS;
+    for (const [runId, run] of this.runs) {
+      if (run.endedAt !== undefined && run.endedAt <= expiry) this.runs.delete(runId);
+    }
   }
 
   private publish(run: Run, event: AgentRunEvent) {
@@ -359,8 +380,8 @@ export class OpenCodeProvider implements AgentProvider {
   private finish(run: Run, outcome: RunOutcome) {
     if (run.snapshot.phase !== "running") return;
     run.promptActive = false;
-    if (outcome.kind !== "unknown" || run.sessionId === undefined)
-      this.activeConversations.delete(run.request.conversationId);
+    if (outcome.kind !== "unknown") this.activeConversations.delete(run.request.conversationId);
+    if (outcome.kind !== "unknown") run.endedAt = this.now();
     this.settlePermissions(run);
     this.publish(run, { type: "run.finished", outcome });
   }

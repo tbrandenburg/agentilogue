@@ -10,11 +10,11 @@ import type {
   RespondToToolApprovalOptions,
   ThreadMessageLike,
 } from "@assistant-ui/react";
-import { AssistantTransportDecoder } from "assistant-stream";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RunTargetId } from "@/lib/run-target";
 import { RunObservationSchema } from "@/lib/agent/contracts/run";
 import { StartAgentRunReceiptSchema } from "@/lib/agent/contracts/http";
+import { hasTerminalProjection, observeOpenCodeRun } from "./opencode-observer";
 import {
   AgentilogueSessionControlsSlot,
   SessionControlsProvider,
@@ -60,13 +60,23 @@ export function OpenCodeSessionRuntime({
   const [messages, setMessages] = useState<ThreadMessageLike[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
+  const [isDisconnected, setIsDisconnected] = useState(false);
   const activeRunId = useRef<string | null>(null);
+  const retryRun = useRef<(() => void) | null>(null);
   const projection = useRef<(AssistantProjection & { messageId: string; createdAt: Date }) | null>(
     null,
   );
   const reportRunning = useCallback(
     (running: boolean) => onRunningChange(session.id, running),
     [onRunningChange, session.id],
+  );
+  const runObserver = useCallback(
+    (runId: string, onObservation: (observation: unknown) => void) =>
+      observeOpenCodeRun(runId, onObservation, (state) => {
+        setIsReconnecting(state === "reconnecting");
+        setIsDisconnected(state === "disconnected");
+      }),
+    [],
   );
 
   const publishProjection = useCallback((next: typeof projection.current) => {
@@ -85,6 +95,7 @@ export function OpenCodeSessionRuntime({
     });
     if (next.snapshot.phase !== "running") {
       activeRunId.current = null;
+      retryRun.current = null;
       setIsRunning(false);
     }
   }, []);
@@ -182,16 +193,11 @@ export function OpenCodeSessionRuntime({
         runId = StartAgentRunReceiptSchema.parse(await start.json()).runId;
         activeRunId.current = runId;
         const permissions = new Map<string, PermissionRecord>();
-        await observeOpenCodeRun(
-          runId,
-          consumeObservation(assistantId, assistantCreatedAt, permissions),
-          setIsReconnecting,
-        );
-        if (
-          projection.current?.messageId === assistantId &&
-          projection.current.snapshot.phase === "running"
-        )
-          throw new Error("OpenCode observation ended before a terminal result.");
+        const onObservation = consumeObservation(assistantId, assistantCreatedAt, permissions);
+        retryRun.current = () => {
+          void runObserver(runId!, onObservation);
+        };
+        await runObserver(runId, onObservation);
       } catch (error) {
         const failure =
           error instanceof Error && error.message.includes("text prompts")
@@ -223,17 +229,30 @@ export function OpenCodeSessionRuntime({
           return current.map((item) => (item.id === assistantId ? failed : item));
         });
       } finally {
-        const terminal = projection.current?.snapshot.phase !== "running";
+        const terminal = hasTerminalProjection(projection.current, assistantId);
         if (runId === undefined || terminal) {
-          if (runId === undefined || activeRunId.current === runId) activeRunId.current = null;
+          if (runId === undefined || activeRunId.current === runId) {
+            activeRunId.current = null;
+            retryRun.current = null;
+          }
           setIsRunning(false);
           setIsReconnecting(false);
+          setIsDisconnected(false);
           if (projection.current?.messageId === assistantId) projection.current = null;
+        } else if (runId !== undefined) {
+          setIsRunning(true);
         }
       }
     },
-    [consumeObservation, session.id],
+    [consumeObservation, runObserver, session.id],
   );
+
+  const onRetry = useCallback(() => {
+    if (!activeRunId.current || !retryRun.current) return;
+    setIsDisconnected(false);
+    setIsRunning(true);
+    retryRun.current();
+  }, []);
 
   const onCancel = useCallback(async () => {
     const runId = activeRunId.current;
@@ -300,6 +319,19 @@ export function OpenCodeSessionRuntime({
           stopped.
         </p>
       ) : null}
+      {isDisconnected ? (
+        <div
+          role="status"
+          className="flex items-center gap-2 px-4 py-1 text-xs text-amber-700 dark:text-amber-300"
+        >
+          <span>
+            OpenCode observation disconnected. The run remains active and can still be stopped.
+          </span>
+          <button type="button" className="underline" onClick={onRetry}>
+            Retry
+          </button>
+        </div>
+      ) : null}
       <SessionControlsProvider
         config={session}
         hasOpenAIKey={hasOpenAIKey}
@@ -320,58 +352,4 @@ function RunningStateReporter({
   const isRunning = useAuiState((state) => state.thread.isRunning);
   useEffect(() => onRunningChange(isRunning), [isRunning, onRunningChange]);
   return null;
-}
-
-async function observeOpenCodeRun(
-  runId: string,
-  onObservation: (observation: unknown) => void,
-  onConnectionState: (reconnecting: boolean) => void,
-): Promise<void> {
-  let attempt = 0;
-  while (true) {
-    try {
-      const controller = new AbortController();
-      const response = await fetch(`/api/agent?runId=${encodeURIComponent(runId)}`, {
-        signal: controller.signal,
-      });
-      if (!response.ok || !response.body) throw new Error("OpenCode observer is unavailable.");
-      onConnectionState(false);
-      const reader = response.body
-        .pipeThrough(new AssistantTransportDecoder({ strict: true }))
-        .getReader();
-      let finished = false;
-      try {
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          if (value.type === "error") throw new Error("OpenCode observer reported an error.");
-          if (value.type !== "update-state") continue;
-          for (const operation of value.operations) {
-            if (operation.type !== "set" || operation.path.length !== 0) continue;
-            const observation = RunObservationSchema.safeParse(operation.value);
-            if (!observation.success) throw new Error("OpenCode sent an invalid observation.");
-            onObservation(observation.data);
-            if (
-              observation.data.type === "snapshot"
-                ? observation.data.snapshot.phase !== "running"
-                : observation.data.event.type === "run.finished"
-            )
-              finished = true;
-          }
-        }
-      } catch (error) {
-        controller.abort();
-        throw error;
-      } finally {
-        reader.releaseLock();
-      }
-      if (finished) return;
-      throw new Error("OpenCode observer ended before a terminal result.");
-    } catch {
-      onConnectionState(true);
-      const delay = Math.min(250 * 2 ** attempt, 5_000);
-      attempt = Math.min(attempt + 1, 5);
-      await new Promise((resolve) => setTimeout(resolve, delay));
-    }
-  }
 }
