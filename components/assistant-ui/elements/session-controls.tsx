@@ -27,6 +27,7 @@ type Config = {
 type Props = {
   config: Config;
   hasOpenAIKey: boolean;
+  hasOpenCodeApi: boolean;
   onChange: (patch: Partial<Config>) => void;
 };
 
@@ -94,7 +95,7 @@ function Option({
   );
 }
 
-export function SessionControls({ config, hasOpenAIKey, onChange }: Props) {
+export function SessionControls({ config, hasOpenAIKey, hasOpenCodeApi, onChange }: Props) {
   const hasMessages = useAuiState((state) => state.thread.messages.length > 0);
   const isRunning = useAuiState((state) => state.thread.isRunning);
   const isSubmitting = useAuiState((state) => state.composer.submission !== undefined);
@@ -143,7 +144,13 @@ export function SessionControls({ config, hasOpenAIKey, onChange }: Props) {
           <Option
             key={runTarget.id}
             value={runTarget.id}
-            disabled={runTarget.id === "openai:vercel-ai" ? !hasOpenAIKey : true}
+            disabled={
+              runTarget.id === "openai:vercel-ai"
+                ? !hasOpenAIKey
+                : runTarget.id === "opencode:cli"
+                  ? !hasOpenCodeApi
+                  : true
+            }
           >
             {runTarget.label}
           </Option>

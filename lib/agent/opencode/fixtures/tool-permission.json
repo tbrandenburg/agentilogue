@@ -1,0 +1,26 @@
+{
+  "updates": [
+    {
+      "sessionUpdate": "tool_call",
+      "toolCallId": "<redacted-tool-call-id>",
+      "status": "pending"
+    },
+    {
+      "sessionUpdate": "tool_call_update",
+      "toolCallId": "<redacted-tool-call-id>",
+      "status": "in_progress"
+    },
+    {
+      "sessionUpdate": "tool_call_update",
+      "toolCallId": "<redacted-tool-call-id>",
+      "status": "completed"
+    }
+  ],
+  "permission": {
+    "offeredOptionIds": ["once", "always", "reject"],
+    "selectedOptionId": "once"
+  },
+  "fileContent": "ACP_FIXTURE_WRITE_OK",
+  "promptStopReason": "end_turn",
+  "processExit": { "code": 0, "signal": null }
+}

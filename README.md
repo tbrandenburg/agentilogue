@@ -4,7 +4,7 @@
 
 agentilogue is an open-source chat app built with [Next.js](https://nextjs.org/) and [assistant-ui](https://github.com/assistant-ui/assistant-ui). It keeps the conversation experience small and focused while keeping the backend integration replaceable.
 
-> **Project status:** Early development. The AI SDK + OpenAI chat path works today. Native integrations for coding-agent runtimes are planned, starting with opencode; they are not yet included.
+> **Project status:** Early development. The AI SDK + OpenAI chat path works today. An opt-in trusted-local OpenCode ACP path is available for text-only conversations; it has no authentication, durable storage, or security boundary around OpenCode's native tools.
 
 ## What works today
 
@@ -16,13 +16,13 @@ assistant-ui → useChatRuntime → /api/chat → Vercel AI SDK → OpenAI
 
 The UI and runtime are built on assistant-ui, so the existing model-chat path stays useful on its own while the project explores richer agent integrations.
 
-The chat screen supports in-memory session tabs with independent assistant-ui runtime transcripts. **Run with** chooses what executes a chat; only AI SDK · OpenAI is implemented, while planned coding-agent choices remain visible but unavailable. **Model** is per-run configuration. Default delegates model choice to the selected Run with target. An explicit model selection is carried through the runtime and must either be honored or fail; agentilogue does not silently substitute a different model. Project displays the server working-directory basename and is not editable: `/api/chat` executes from the server working directory.
+The chat screen supports in-memory session tabs with independent assistant-ui runtime transcripts. **Run with** chooses what executes a chat: AI SDK · OpenAI is available when configured, and OpenCode · CLI is available only when its trusted-local API is explicitly enabled. **Model** is per-run configuration; OpenCode model and agent overrides remain unavailable. The OpenCode path accepts text only, runs provider-owned native tools under OpenCode's configured permissions and server-selected working directory, and is not sandboxed. Its unauthenticated API is suitable only for a single trusted local user, bound to loopback by the project `dev` and `start` scripts. Do not expose it through proxies, public/shared interfaces, or untrusted deployments. Tabs and run state are in memory. The Project display is not editable; `/api/chat` executes from the server working directory.
 
 The checked-in models.dev catalog is provider-independent metadata grouped by canonical creator/lab IDs. Repository-owned **Preconfigured** tiers provide a compact fast path, while the broader catalog remains available for selection where the active execution path supports it. Check catalog freshness with `bun run models:check`; after reviewing drift, update it with `bun run models:sync`.
 
 ## Quick start
 
-You’ll need [Bun](https://bun.sh/) and an [OpenAI API key](https://platform.openai.com/api-keys).
+You’ll need [Bun](https://bun.sh/). An [OpenAI API key](https://platform.openai.com/api-keys) is needed for the AI SDK path. OpenCode is separately optional for its trusted-local path.
 
 1. Clone the repository and install dependencies:
 
@@ -46,9 +46,21 @@ You’ll need [Bun](https://bun.sh/) and an [OpenAI API key](https://platform.op
 
 4. Open [http://localhost:3000](http://localhost:3000).
 
+To opt in to OpenCode, install and authenticate the OpenCode CLI separately, then set these server-side values in `.env.local`:
+
+```env
+AGENT_API_ENABLED=1
+AGENT_TRUSTED_LOCAL=1
+OPENCODE_CWD=/absolute/path/to/project
+# Optional; defaults to `opencode` on PATH.
+# OPENCODE_EXECUTABLE=/absolute/path/to/opencode
+```
+
+Restart with `bun run dev`; the project entrypoint binds to `127.0.0.1`. The API has no caller authentication and trusts the operator's `AGENT_TRUSTED_LOCAL=1` assertion. Do not change the bind address or place it behind a reverse proxy or on a shared/untrusted network. OpenCode retains control of its native tools and permissions; agentilogue does not sandbox their filesystem or other effects. See [the API limits and behavior](docs/opencode-agent-api.md).
+
 ## Direction
 
-The next step is a focused integration with a coding-agent runtime, beginning with opencode. The design keeps the chat UI separate from agent execution and aims to preserve useful native agent capabilities rather than forcing every runtime into a lowest-common-denominator interface.
+The initial OpenCode ACP integration is available as an opt-in trusted-local path. The next step is to extend agent support only when another runtime creates a concrete need, while keeping the chat UI separate from execution and preserving useful native capabilities.
 
 Planned CLI targets include opencode, pi, codex, claude code, and github copilot. This is a direction, not a claim that those integrations are available today. Abstractions will be added as real integrations require them; the working AI SDK path remains a first-class option.
 

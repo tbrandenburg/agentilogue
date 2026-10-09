@@ -1,0 +1,37 @@
+{
+  "sessionId": "<redacted-session-id>",
+  "newProcessExit": { "code": 0, "signal": null },
+  "load": {
+    "updates": [
+      "user_message_chunk",
+      "agent_message_chunk",
+      "available_commands_update",
+      "agent_message_chunk"
+    ],
+    "replayedText": "Remember the codeword RESTART_CONTEXT_73. Reply exactly SESSION_SAVED.SESSION_SAVED",
+    "continuationText": "RESTART_CONTEXT_73",
+    "processExit": { "code": 0, "signal": null }
+  },
+  "resume": {
+    "updates": ["available_commands_update", "agent_message_chunk"],
+    "continuationText": "RESTART_CONTEXT_73",
+    "processExit": { "code": 0, "signal": null }
+  },
+  "observerDetach": {
+    "visibleText": "OB",
+    "promptStopReasons": ["end_turn", "end_turn"],
+    "processExit": { "code": 0, "signal": null }
+  },
+  "processLoss": {
+    "clientError": "ACP connection closed",
+    "promptStopReason": null,
+    "processExit": { "code": null, "signal": "SIGTERM" }
+  },
+  "permissionCancel": {
+    "offeredOptionIds": ["once", "always", "reject"],
+    "toolFinalStatus": "failed",
+    "cancelThenSettleStopReason": "cancelled",
+    "settleThenCancelStopReason": "cancelled",
+    "processExit": { "code": 0, "signal": null }
+  }
+}

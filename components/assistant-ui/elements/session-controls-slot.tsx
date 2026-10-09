@@ -13,6 +13,7 @@ type SessionControlsConfig = {
 type SessionControlsContextValue = {
   config: SessionControlsConfig;
   hasOpenAIKey: boolean;
+  hasOpenCodeApi: boolean;
   onChange: (patch: Partial<SessionControlsConfig>) => void;
 };
 
@@ -35,6 +36,7 @@ export function AgentilogueSessionControlsSlot() {
     <SessionControls
       config={value.config}
       hasOpenAIKey={value.hasOpenAIKey}
+      hasOpenCodeApi={value.hasOpenCodeApi}
       onChange={value.onChange}
     />
   );
