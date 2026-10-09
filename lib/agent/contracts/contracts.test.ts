@@ -5,6 +5,8 @@ import {
   AgentControlBodySchema,
   AgentControlReceiptSchema,
   AgentRunEventSchema,
+  AgentInputSchema,
+  RunToolSchema,
   RunSnapshotSchema,
   RunObservationSchema,
   PermissionRequestSchema,
@@ -85,6 +87,49 @@ describe("application HTTP contract", () => {
 });
 
 describe("internal provider contract", () => {
+  it("accepts bare MIME type/subtype tokens and rejects malformed values and parameters", () => {
+    for (const mimeType of [
+      "text/plain",
+      "application/vnd.example+json",
+      "application/x-test!$&^_`|~",
+    ]) {
+      assert.equal(
+        AgentInputSchema.safeParse({ type: "file", fileId: "file-1", mimeType }).success,
+        true,
+      );
+    }
+    for (const mimeType of [
+      "",
+      "plain",
+      "/plain",
+      "text/",
+      "text/plain/extra",
+      "text /plain",
+      "text/plain; charset=utf-8",
+    ]) {
+      assert.equal(
+        AgentInputSchema.safeParse({ type: "file", fileId: "file-1", mimeType }).success,
+        false,
+      );
+    }
+  });
+
+  it("applies the same non-empty title policy to tool updates and snapshots", () => {
+    const event = (title: string) => ({ type: "tool.updated", toolCallId: "tool-1", title });
+    const tool = (title: string) => ({ id: "tool-1", title });
+    for (const title of ["Run command", " "]) {
+      assert.equal(AgentRunEventSchema.safeParse(event(title)).success, true);
+      assert.equal(RunToolSchema.safeParse(tool(title)).success, true);
+    }
+    assert.equal(AgentRunEventSchema.safeParse(event("")).success, false);
+    assert.equal(RunToolSchema.safeParse(tool("")).success, false);
+    assert.equal(
+      AgentRunEventSchema.safeParse({ type: "tool.updated", toolCallId: "tool-1" }).success,
+      true,
+    );
+    assert.equal(RunToolSchema.safeParse({ id: "tool-1" }).success, true);
+  });
+
   it("capabilities distinguish cold reattach from same-process reconnect", () => {
     const capability = {
       input: { text: true, files: false },

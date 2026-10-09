@@ -13,12 +13,18 @@ import {
   ToolCallIdSchema,
 } from "./identifiers";
 
+// MIME inputs are bare type/subtype values; parameters are intentionally unsupported.
+const MimeTypeSchema = z
+  .string()
+  .max(128)
+  .regex(/^[!#$%&'*+.^_`|~0-9A-Za-z-]+\/[!#$%&'*+.^_`|~0-9A-Za-z-]+$/);
+
 export const AgentInputSchema = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("text"), text: z.string().min(1).max(65_536) }),
   z.strictObject({
     type: z.literal("file"),
     fileId: z.string().min(1).max(256),
-    mimeType: z.string().min(3).max(128),
+    mimeType: MimeTypeSchema,
   }),
 ]);
 export type AgentInput = z.infer<typeof AgentInputSchema>;
@@ -150,7 +156,7 @@ export type RunPart = Readonly<z.infer<typeof RunPartSchema>>;
 
 export const RunToolSchema = z.strictObject({
   id: ToolCallIdSchema,
-  title: z.string().max(1024).optional(),
+  title: z.string().min(1).max(1024).optional(),
   status: ToolStatusSchema.optional(),
   summary: z.string().max(8192).optional(),
 });
