@@ -111,6 +111,7 @@ export const AgentRunEventSchema = z.discriminatedUnion("type", [
   z.strictObject({
     type: z.literal("message.delta"),
     messageId: MessageIdSchema,
+    segmentId: z.string().min(1).max(256),
     channel: z.enum(["assistant", "reasoning"]),
     text: z.string().min(1),
   }),
@@ -130,10 +131,22 @@ export type AgentRunEvent = Readonly<z.infer<typeof AgentRunEventSchema>>;
 
 export const RunMessageSchema = z.strictObject({
   id: MessageIdSchema,
+  segmentId: z.string().min(1).max(256),
   channel: z.enum(["assistant", "reasoning"]),
   text: z.string(),
 });
 export type RunMessage = Readonly<z.infer<typeof RunMessageSchema>>;
+
+/** Ordered references to materialized text segments and tool calls. */
+export const RunPartSchema = z.discriminatedUnion("type", [
+  z.strictObject({
+    type: z.literal("message"),
+    messageId: MessageIdSchema,
+    segmentId: z.string().min(1).max(256),
+  }),
+  z.strictObject({ type: z.literal("tool"), toolCallId: ToolCallIdSchema }),
+]);
+export type RunPart = Readonly<z.infer<typeof RunPartSchema>>;
 
 export const RunToolSchema = z.strictObject({
   id: ToolCallIdSchema,
@@ -151,6 +164,7 @@ const SnapshotBaseSchema = z.strictObject({
   lastSequence: z.number().int().nonnegative(),
   messages: z.array(RunMessageSchema),
   tools: z.array(RunToolSchema),
+  parts: z.array(RunPartSchema),
   pendingPermissions: z.array(PermissionRequestSchema),
 });
 

@@ -140,6 +140,7 @@ describe("internal provider contract", () => {
       lastSequence: 0,
       messages: [],
       tools: [],
+      parts: [],
       pendingPermissions: [],
     };
     assert.equal(RunSnapshotSchema.safeParse(running).success, true);
@@ -181,11 +182,34 @@ describe("internal provider contract", () => {
     );
   });
 
+  it("preserves repeated text segments around tools in snapshot order", () => {
+    const snapshot = {
+      runId,
+      conversationId: "thread-1",
+      phase: "running",
+      lastSequence: 5,
+      messages: [
+        { id: "msg-1", segmentId: "segment-1", channel: "assistant", text: "Before" },
+        { id: "msg-1", segmentId: "segment-2", channel: "assistant", text: "After" },
+      ],
+      tools: [{ id: "tool-1", title: "Read file", status: "completed" }],
+      parts: [
+        { type: "message", messageId: "msg-1", segmentId: "segment-1" },
+        { type: "tool", toolCallId: "tool-1" },
+        { type: "message", messageId: "msg-1", segmentId: "segment-2" },
+      ],
+      pendingPermissions: [],
+    } as const;
+
+    assert.deepEqual(RunSnapshotSchema.parse(snapshot).parts, snapshot.parts);
+  });
+
   it("never embeds native SDK events or opaque tool execution payloads", () => {
     assert.equal(
       AgentRunEventSchema.parse({
         type: "message.delta",
         messageId: "msg-1",
+        segmentId: "segment-1",
         channel: "assistant",
         text: "Hello",
       }).type,
