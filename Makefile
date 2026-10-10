@@ -1,7 +1,7 @@
 .PHONY: format lint test release
 
 format:
-	bun run format
+	@bun run format || { bun run format:fix; git diff -- app/opencode-native-session.tsx docs/spikes/2026-10-opencode-local-boundary-issue-34.md tests/opencode-native-config.test.ts; exit 1; }
 
 lint:
 	bun run lint
