@@ -81,15 +81,14 @@ export function OpenCodeNativeSessionRuntime(props: Props) {
               // SDK transport failures are not proof that Basic auth is enabled.
               throw new Error("Could not verify OpenCode Basic auth");
             }
-            const unauthenticatedStatus = getErrorStatus(unauthenticatedResult.error);
-            if (unauthenticatedStatus !== 401) {
+            if (unauthenticatedResult.response.status !== 401) {
               throw new Error(
                 "OpenCode Basic auth is not enabled (unauthenticated health did not return 401)",
               );
             }
             const authenticated = createAuthenticatedClient(availability.baseUrl, password);
             const authenticatedResult = await authenticated.global.health();
-            if (authenticatedResult.error) {
+            if (authenticatedResult.response.status !== 200 || authenticatedResult.error) {
               throw new Error("OpenCode rejected the password; check the server password");
             }
             setConnectedPassword(password);
@@ -149,16 +148,6 @@ export function OpenCodeNativeSessionRuntime(props: Props) {
       onDisconnect={() => setConnectedPassword(undefined)}
     />
   );
-}
-
-function getErrorStatus(error: unknown): number | undefined {
-  if (typeof error !== "object" || error === null) return undefined;
-  if ("status" in error && typeof error.status === "number") return error.status;
-  if ("data" in error && typeof error.data === "object" && error.data !== null) {
-    const statusCode = "statusCode" in error.data ? error.data.statusCode : undefined;
-    if (typeof statusCode === "number") return statusCode;
-  }
-  return undefined;
 }
 
 function createAuthenticatedClient(baseUrl: string, password: string) {
