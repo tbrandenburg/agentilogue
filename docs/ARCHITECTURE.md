@@ -4,7 +4,7 @@ agentilogue aims to be a minimal chat surface for talking to agents across diffe
 
 The project should stay simple: keep working integrations working, add abstraction only when a real implementation proves it is useful, and avoid turning the UI into an agent framework.
 
-[CONTRACTS.md](CONTRACTS.md) records the current provider-neutral boundaries and behavioral invariants. Its locked decisions govern the illustrative provider sketch below; the linked TypeScript candidates remain subject to native validation.
+[ADR 0001](decisions/0001-agent-integration-lanes.md) defines how we select integration lanes. [CONTRACTS.md](CONTRACTS.md) governs the implemented, authoritative app-owned provider-neutral lane, not every assistant-ui runtime.
 
 ## Today
 
@@ -26,146 +26,49 @@ This path is useful and should remain supported. It is the simplest way to use a
 
 ## Runtime architecture
 
-assistant-ui gives us one UI surface while allowing different runtime integrations underneath it.
-
-The existing AI SDK path remains a first-class lane. Richer agents can use an ExternalStoreRuntime-backed lane with AssistantTransport between the browser and our backend.
+The shared frontend surface is assistant-ui's `AssistantRuntime`, provided through `AssistantRuntimeProvider`. **Runtime integrations are alternatives**, not layers every agent must pass through.
 
 ```mermaid
 flowchart TB
-    UI["assistant-ui components"] --> AR["AssistantRuntime"]
-
-    AR --> AI["AI SDK lane"]
-    AR --> ESR["ExternalStoreRuntime<br/>agent lane"]
-
-    AI --> UCR["useChatRuntime"]
-    UCR --> ACT["AssistantChatTransport"]
-    ACT --> CHAT["/api/chat"]
-    CHAT --> STREAM["streamText"]
-    STREAM --> MODEL["OpenAI / AI SDK provider"]
-
-    ESR <--> AT["AssistantTransport<br/>commands + streamed state"]
-    AT <--> AGENTAPI["/api/agent"]
-    AGENTAPI --> PROVIDER["AgentProvider"]
-    PROVIDER --> OC["opencode"]
+    UI["AGENTILOGUE Thread"] --> ROOT["assistant-ui AssistantRuntime"]
+    ROOT --> SDK["useChatRuntime · implemented"]
+    SDK --> CHAT["/api/chat → AI SDK → OpenAI"]
+    ROOT --> ACP["useExternalStoreRuntime · implemented"]
+    ACP --> API["/api/agent · admitted runs / observation / controls"]
+    API --> PORT["AgentProvider → OpenCode ACP"]
+    ROOT --> NATIVE["Maintained framework runtime · optional"]
+    NATIVE --> UPSTREAM["OpenCode SDK/server, Pi SDK, etc."]
 ```
 
-The diagram is conceptual, not a strict internal call stack. The important boundaries are:
+Today AI SDK and OpenCode ACP are implemented. A native OpenCode runtime was exercised only in the disposable [issue #29 spike](spikes/2026-10-opencode-integration-comparison.md); it is **not** an enabled app lane. The ACP browser adapter uses app-owned start/control requests and independently reconnectable observation encoded with maintained `assistant-stream` primitives; `AssistantTransport` is not a mandatory backend command queue.
 
-- **assistant-ui components** talk to an `AssistantRuntime`.
-- **ExternalStoreRuntime** adapts externally owned conversation/agent state into assistant-ui.
-- **AssistantTransport** moves commands and streamed state between that runtime and a remote backend.
-- **AgentProvider** isolates a concrete agent runtime or protocol from the UI.
-- **`/api/agent`** should stay thin and call the configured provider directly.
-
-There is intentionally no `AgentService` or `AgentRegistry` in the initial design.
+Our `Thread` and its assistant-ui runtime interface remain stable even when the native transport, runtime hook and server API differ.
 
 ## Direct framework adapters
 
-assistant-ui already demonstrates that framework-specific adapters can map directly into ExternalStoreRuntime:
+Where a maintained upstream runtime fits, use its public adapter without converting native messages back through our provider-neutral run model. Examples include assistant-ui's `useOpenCodeRuntime`, `usePiRuntime`, `useAgUiRuntime` and `useA2ARuntime`. Upstream integrations may use `useExternalStoreRuntime` internally; that is their implementation detail, not a requirement to add our own `AgentProvider`.
 
-```mermaid
-flowchart TB
-    LG["LangGraph"]
-    LC["LangChain"]
-    EVE["Eve"]
-    A2A["A2A"]
-    AGUI["AG-UI"]
-    OC["opencode"]
-
-    LG --> ESR["ExternalStoreRuntime"]
-    LC --> ESR
-    EVE --> ESR
-    A2A --> ESR
-    AGUI --> ESR
-    OC --> ESR
-
-    ESR --> UI["assistant-ui"]
-```
-
-These integrations are useful references for mapping framework-specific messages, state, tool calls, approvals, attachments, and actions into one UI runtime.
-
-agentilogue does not need to force every integration through `AgentProvider`. A direct adapter can remain the simplest choice for a dedicated integration.
-
-For agentilogue's provider-neutral backend path, the intended shape is:
-
-```mermaid
-flowchart LR
-    UI["assistant-ui"] <--> RT["ExternalStoreRuntime<br/>+ AssistantTransport"]
-    RT <--> API["/api/agent"]
-    API --> P["AgentProvider"]
-    P --> A["agent runtime / protocol"]
-```
-
-Both paths should remain possible.
+Use [ADR 0001](decisions/0001-agent-integration-lanes.md) to choose a lane. A native adapter must still meet AGENTILOGUE's deployment-specific project/session ownership, authentication, cancellation, permission and recovery requirements. The [OpenCode spike](spikes/2026-10-opencode-integration-comparison.md) found that direct SDK/server access could enumerate sessions outside the disposable project; it is therefore **not yet approved for production**.
 
 ## Backend boundary
 
-The backend should expose the smallest useful contract between the UI transport and a concrete agent.
+For integrations that need AGENTILOGUE-owned process/session management, the canonical `AgentProvider` port in [`lib/agent/contracts/`](../lib/agent/contracts/) is our server-side contract. [`CONTRACTS.md`](CONTRACTS.md) defines its admission, snapshot-first observation, independently deliverable control, permission identity and truthful terminal-state rules.
 
-The **implemented contract definitions** are maintained in [`lib/agent/contracts/`](../lib/agent/contracts/) and governed by [`CONTRACTS.md`](CONTRACTS.md). The sole app-owned provider port is `AgentProvider`; it owns independent admission, snapshot-first observation, cancellation, permission responses and actual capability reporting. Its exported types are authoritative internal APIs, and native OpenCode ACP evidence may justify reviewed revisions.
+Those exported types are **authoritative for the provider-neutral lane**. They do not replace assistant-ui's public `AssistantRuntime`, or a maintained native runtime's own state/transport types. Keep native SDK types isolated to their adapter; never make the UI own credentials, workspace authorization or native subprocess lifetime.
 
-Do not introduce an illustrative competing `run(): AsyncIterable<AgentEvent>` interface: the current port distinguishes admission, observation and independently deliverable control.
-
-The provider layer should not depend on assistant-ui types. Translation between assistant-ui/transport state and agentilogue domain types belongs at the transport boundary.
-
-A provider may represent:
-
-- a native SDK or API such as opencode
-- a local process
-- a remote/cloud agent
-- a protocol adapter such as ACP or A2A
-- a framework such as LangGraph when routing it through the common backend is useful
-
-The physical location of the agent should not matter to the UI.
+Do not add a generic `AgentService`, `AgentRegistry` or parallel event representation without a proven second implementation that needs one.
 
 ## Target agent integrations
 
-The provider abstraction is intended for more than opencode.
+Likely future agent targets include Pi, Codex, Claude Code and GitHub Copilot, in addition to OpenCode. Select each concrete integration using [ADR 0001](decisions/0001-agent-integration-lanes.md): first assess maintained assistant-ui adapters, then the agent's suitable native SDK/protocol and required security boundary. ACP is one option, **not** the default interface every agent must support.
 
-The first integration wave should focus on agent CLIs:
-
-- opencode
-- pi
-- codex
-- claude code
-- github copilot
-
-Later, where an SDK gives us a cleaner or richer integration, support SDK-backed implementations as well:
-
-- opencode SDK
-- pi SDK
-- claude code SDK
-
-CLI versus SDK should normally be an implementation detail behind the same provider-facing contract, not a reason to create a second architecture. Only split them into separate provider types if their behavior or capabilities differ enough to matter to callers.
-
-opencode remains the first deep proof because one real implementation should shape the contract before we generalize it to the other agents.
+Do not force a native SDK or a protocol adapter into `AgentProvider` merely to share a TypeScript port. If two backends genuinely need the same run/admission/observation/control interface, reuse the existing port; if an upstream runtime provides a better direct integration, keep it native.
 
 ## Capability model
 
-Different agent CLIs and SDKs expose different features. The provider contract should therefore support capability discovery, but we should add capability fields only when agentilogue actually needs to branch on them.
+The provider-neutral lane reports actual supported behavior through `AgentCapabilities`: continuation, reconnectability, tool updates, permissions, selection and cancellation. Capability claims require native and browser evidence, not merely an SDK method or TypeScript property.
 
-Archon's current `ProviderCapabilities` is a useful reference map. It covers areas such as:
-
-- session resume and session fork
-- MCP
-- hooks and skills
-- subagents
-- tool restrictions and known tool names
-- structured output
-- environment injection
-- cost control and usage/cost reporting
-- reasoning/effort control and fallback models
-- sandbox/container execution
-- native in-process tools
-- provider-specific settings
-
-This is inspiration, not a contract to copy. Archon serves workflow execution and therefore needs capabilities that agentilogue may never need.
-
-Our initial `AgentCapabilities` should contain only capabilities required by the UI or transport. Likely early candidates are session resume, tool calls, approvals, attachments/files, reasoning visibility, and subagent visibility. Add further flags only when a real provider difference requires them.
-
-The rule is:
-
-> capability flags describe meaningful behavioral differences; they are not an inventory of everything an SDK can do.
+Framework-native integrations may have richer runtime-specific capabilities, including questions, history, fork/revert and nested agent activity. Keep those with their maintained adapter; do not inflate `AgentCapabilities` into a global inventory or silently erase native functionality. Shared product decisions should follow demonstrated behavior, not superficial feature-name parity.
 
 ## Provider selection: grow only when needed
 
@@ -173,7 +76,7 @@ One chat session talks to one configured agent at a time. That lets the initial 
 
 ### First provider
 
-With only opencode, the route can instantiate or resolve it directly:
+For the existing OpenCode ACP lane, the route resolves the provider directly:
 
 ```mermaid
 flowchart LR
@@ -182,27 +85,9 @@ flowchart LR
 
 No service or registry is needed.
 
-### Second provider
+### Second provider using the same port
 
-When a second provider actually exists, add the smallest useful selection mechanism, likely a factory:
-
-```ts
-function createAgentProvider(config: AgentConfig): AgentProvider {
-  switch (config.type) {
-    case "opencode":
-      return new OpencodeProvider(config);
-    case "acp":
-      return new AcpProvider(config);
-  }
-}
-```
-
-```mermaid
-flowchart LR
-    API["/api/agent"] --> F["createAgentProvider(config)"]
-    F --> OC["OpencodeProvider"]
-    F --> ACP["ACPProvider"]
-```
+Only if a **second concrete backend** needs the existing `AgentProvider` interface should we add a small local selection function/factory. The function selects implementations of *that port*, not unrelated `AssistantRuntime` families. Different runtime families may be composed at the session/UI boundary without a new universal provider registry.
 
 ### Registry or service later
 
@@ -220,15 +105,15 @@ A user who only wants the AI SDK path should not need the agent-provider layer.
 
 ### Keep agent contracts UI-independent
 
-Agent/provider contracts should use agentilogue domain types rather than assistant-ui types. Translation belongs at the runtime or transport boundary.
+Within the provider-neutral backend lane, app-owned contract types remain independent of assistant-ui and native SDK types. Framework-native runtimes use their upstream contracts without a translation round trip through our models.
 
 ### Preserve native capabilities
 
 Generic protocols are useful, but they should not force richer native integrations into a lowest-common-denominator model. A direct opencode integration, for example, may expose capabilities that a generic protocol does not.
 
-### Prefer protocols over provider-specific glue
+### Prefer proven, maintained integrations
 
-Where standards fit naturally, prefer reusable protocol adapters such as ACP or A2A over many nearly identical provider integrations. Native providers remain an escape hatch.
+Evaluate maintained assistant-ui adapters first. Use ACP, AG-UI, A2A or a native SDK at the boundary it actually solves, after testing ownership, feature and lifecycle requirements. A standard protocol is an option, not an obligatory extra layer.
 
 ### Separate agents from tools
 
@@ -236,35 +121,13 @@ Agent runtimes/providers and tool protocols are different concerns. MCP and simi
 
 ### Keep routing boring
 
-Provider selection should start as direct construction and become a small factory only when provider #2 arrives. Do not add a service or registry to make the architecture look complete.
+Construct one configured backend provider directly. Add a small factory only if another implementation uses the same backend port; do not add a universal runtime registry just because different assistant-ui adapters exist.
 
-## First proof: opencode
+## First proof: OpenCode ACP
 
-The first deeper custom-agent integration should be opencode. It is the first proof for a broader CLI target set that includes pi, codex, claude code, and github copilot.
+The initial deep OpenCode proof is implemented through the official ACP SDK and AGENTILOGUE's provider-neutral lane. It exercises streaming, native tool updates, permissions, cancellation, session identity and truthful unknown outcomes. See [the provider contracts](CONTRACTS.md) for its precise invariants.
 
-Use it to validate the smallest useful contracts for:
-
-- text streaming
-- cancellation and resume
-- tool calls and results
-- approvals/permissions
-- attachments/files
-- errors
-- sessions and subagents where useful
-
-Do not generalize the contracts before this integration creates a concrete need.
-
-A successful first implementation should prove this path:
-
-```mermaid
-flowchart LR
-    UI["assistant-ui"] <--> RT["ExternalStoreRuntime<br/>+ AssistantTransport"]
-    RT <--> API["/api/agent"]
-    API --> OP["OpencodeProvider"]
-    OP --> OC["opencode"]
-```
-
-The goal is not merely to receive an answer. The integration should exercise enough real agent behavior that a second provider can be added without redesigning the UI or provider contract.
+The subsequent [issue #29 comparison](spikes/2026-10-opencode-integration-comparison.md) demonstrated assistant-ui's native OpenCode adapter with significantly less app-owned code but identified a cross-project session-list boundary and version mismatch. We keep ACP as the app's OpenCode path until a native lane proves equivalent project isolation and lifecycle behavior; this is not a permanent preference for ACP.
 
 ## References and inspiration
 
@@ -284,9 +147,7 @@ Study how framework-specific state, tool calls, approvals, attachments, and acti
 
 ### opencode
 
-[opencode](https://github.com/anomalyco/opencode) is the first native agent integration we want to study deeply.
-
-It should drive the first real version of the AgentProvider contract, especially around sessions, tool execution, permissions, files, streaming, and subagents. The resulting contract should then be challenged against pi, codex, claude code, and github copilot before it is treated as stable.
+[opencode](https://github.com/anomalyco/opencode) is the first implemented native-agent integration and the subject of the [OpenCode native-versus-ACP spike](spikes/2026-10-opencode-integration-comparison.md). ACP is implemented today; the upstream OpenCode SDK/server runtime is a tested research alternative, not a production lane.
 
 ### Archon
 
@@ -313,25 +174,15 @@ Their breadth is inspiration, not a target. agentilogue should remain a thin cha
 
 ### Agent protocols
 
-Protocol support should be driven by real use cases:
+Protocol support follows real use cases and the boundary they serve:
 
-- [ACP](https://agentclientprotocol.com/) for client-to-coding-agent interoperability
-- [A2A](https://a2a-protocol.org/) for remote agent interoperability
-- [AG-UI](https://docs.ag-ui.com/) as a reference for agent-to-UI event/state exchange
-- [MCP](https://modelcontextprotocol.io/) for tools and resources, not as an AgentProvider abstraction
-- [Microsoft Agent Host Protocol](https://github.com/microsoft/agent-host-protocol) as a reference when multi-client or hosted agent-session coordination becomes relevant
+- [ACP](https://agentclientprotocol.com/) for client-to-coding-agent interoperability and server-owned local agent lifecycles
+- [A2A](https://a2a-protocol.org/) for remote agent tasks/artifacts
+- [AG-UI](https://docs.ag-ui.com/) for agent-to-UI event/state exchange
+- [MCP](https://modelcontextprotocol.io/) for tools/resources, **not** an agent provider
+- [Microsoft Agent Host Protocol](https://github.com/microsoft/agent-host-protocol) as a reference for hosted coordination
 
-A useful conceptual layering is:
-
-```mermaid
-flowchart TB
-    UI["UI / runtime transport"] --> P["AgentProvider"]
-    P --> AP["ACP / A2A / native provider"]
-    AP --> A["agent runtime"]
-    A --> T["MCP / tools"]
-```
-
-Do not implement all of these up front. Add a protocol only when it removes real integration work or unlocks a concrete agent.
+These may be alternatives or complementary boundaries. Do not build a universal protocol conversion stack or require that all native integrations traverse `AgentProvider`.
 
 ## What not to build yet
 
