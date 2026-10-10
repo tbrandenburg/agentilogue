@@ -9,6 +9,7 @@ import type { ThreadComponents } from "@/components/assistant-ui/elements/thread
 import { SessionControlsProvider } from "@/components/assistant-ui/elements/session-controls-slot";
 import type { OpenCodeNativeAvailability } from "@/lib/opencode-native-config";
 import { isOpenCodeNativeOriginAllowed } from "@/lib/opencode-native-config";
+import { withOpenCodeTitleWorkaround } from "@/lib/opencode-native-title-workaround";
 import type { RunTargetId } from "@/lib/run-target";
 import { AGENT_THREAD_COMPONENTS } from "./opencode-session";
 
@@ -115,8 +116,8 @@ export function OpenCodeNativeSessionRuntime(props: Props) {
           className="rounded-md border bg-background px-3 py-2 text-sm"
         />
         <p className="text-xs text-muted-foreground">
-          Held in memory for this tab only. Session title generation is currently incompatible with
-          the pinned adapter/server API.
+          Held in memory for this tab only. A temporary workaround skips the adapter's invalid
+          title request; OpenCode may supply a title after the first prompt.
         </p>
         {error && (
           <p role="alert" className="text-sm text-destructive">
@@ -166,6 +167,7 @@ function createAuthenticatedClient(baseUrl: string, password: string) {
   return createOpencodeClient({
     baseUrl,
     headers: { Authorization: `Basic ${btoa(binary)}` },
+    fetch: withOpenCodeTitleWorkaround(fetch),
   });
 }
 
