@@ -87,7 +87,7 @@ No service or registry is needed.
 
 ### Second provider using the same port
 
-Only if a **second concrete backend** needs the existing `AgentProvider` interface should we add a small local selection function/factory. The function selects implementations of *that port*, not unrelated `AssistantRuntime` families. Different runtime families may be composed at the session/UI boundary without a new universal provider registry.
+Only if a **second concrete backend** needs the existing `AgentProvider` interface should we add a small local selection function/factory. The function selects implementations of _that port_, not unrelated `AssistantRuntime` families. Different runtime families may be composed at the session/UI boundary without a new universal provider registry.
 
 ### Registry or service later
 
