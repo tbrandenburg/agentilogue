@@ -12,13 +12,19 @@ describe("OpenCode native server gate", () => {
     appOrigin: "http://localhost:3000",
   };
 
-  it("keeps the known pinned adapter disabled even when the native env gate is on", () => {
+  it("permits the explicit trusted-local opt-in with verified loopback configuration", () => {
     assert.deepEqual(getOpenCodeNativeAvailability(valid), {
-      enabled: false,
-      reason:
-        "Disabled: pinned adapter title generation is incompatible; wait for a verified upstream fix",
+      enabled: true,
+      baseUrl: "http://127.0.0.1:4096",
       appOrigin: "http://localhost:3000",
     });
+  });
+
+  it("keeps the native lane unavailable without its explicit opt-in", () => {
+    assert.equal(
+      getOpenCodeNativeAvailability({ ...valid, enabled: "0" }).enabled,
+      false,
+    );
   });
 
   it("rejects server URLs that are not root-only http loopback URLs", () => {
