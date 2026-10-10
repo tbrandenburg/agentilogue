@@ -1,6 +1,6 @@
 # ADR 0001: Choose agent integrations at the boundary that fits
 
-**Status:** Proposed (maintainer approval required)  
+**Status:** Accepted  
 **Date:** 2026-10-10  
 **Related:** [Issue #29](https://github.com/tbrandenburg/agentilogue/issues/29), [OpenCode comparison spike](../spikes/2026-10-opencode-integration-comparison.md)
 
@@ -12,13 +12,18 @@ The app needs a maintainable path to multiple agents without making ACP mandator
 
 ## Decision
 
-1. **Keep ACP as the current OpenCode lane** while the app requires a server-owned project and conversation/session boundary.
-2. **Prefer a maintained assistant-ui runtime** when it supports the target agent, its package is compatible with the installed assistant-ui line, and its session/security ownership can meet the app boundary. Use that runtime and the existing `Thread`; do not reimplement its projection.
-3. **Prefer a standardized protocol at the boundary it serves.** Use ACP for native local agent subprocesses when process/session ownership and cross-agent native interoperability matter. Use AG-UI when an agent backend speaks AG-UI to a browser runtime. Use A2A for remote agent tasks/artifacts and their task lifecycle, not as a local subprocess session substitute.
-4. **Use a direct provider SDK/API with minimal glue** when no maintained assistant-ui adapter or suitable protocol exists, or where a proven native capability requires it. Keep SDK types and lifecycle behavior at that agent adapter boundary.
-5. Reconsider a separate OpenCode native-runtime lane after a project-scoped server/data store or an authorized proxy proves session ownership, and after the package/server compatibility issues in the spike are resolved.
+1. **Use assistant-ui `AssistantRuntime` as the common frontend contract.** AGENTILOGUE's `Thread` consumes an `AssistantRuntime` supplied by `AssistantRuntimeProvider`. Each integration may supply it through a maintained assistant-ui hook or a custom runtime adapter. This does **not** prescribe an identical backend.
+2. **Keep ACP as the current OpenCode lane.** Its server-owned project, conversation/session binding, native run lifecycle and independent permission/cancel controls satisfy the current trusted-local architecture. This is a current implementation choice, **not** an ACP-first rule.
+3. **Evaluate a maintained assistant-ui adapter first** for each new integration. Adopt it only after verifying installed-package compatibility, authenticated/authorized project and session access appropriate to the deployment, conversation isolation, truthful completion/cancellation, live permission handling, reconnect/reattach claims, and preservation of important native capabilities. Use its public runtime and existing `Thread` instead of duplicating projection logic.
+4. **Choose protocols at the boundary they actually serve.** ACP is an option for local native-agent processes; AG-UI is an agent-to-UI event/interaction protocol; A2A is for remote agent task/artifact interactions. None is a mandatory intermediate layer.
+5. **Use a native SDK/API with minimal server glue when justified** by a missing maintained adapter, security/deployment ownership, or a tested native capability. Keep provider-specific semantics at that adapter boundary.
+6. **Keep `AgentProvider` optional and scoped.** `AgentProvider`, `RunObservation`, `RunSnapshot`, `AgentRunEvent`, and `/api/agent` are authoritative **for the app-owned provider-neutral backend lane**. A framework-native integration need not implement, translate through, or duplicate them. Shared security and lifecycle *behaviors* must still be demonstrated in each lane.
 
-Agent-specific behavior remains agent-specific: project/workspace selection, process lifecycle, session identity and history, model/agent selection semantics, native permissions and questions, cancellation evidence, tool parts, and child-agent transcript shape. Normalize only behavior required for a shared app boundary; do not force every integration through `AgentProvider` when a maintained runtime is simpler.
+Agent-specific behavior remains agent-specific: project/workspace selection, process lifecycle, session identity and history, model/agent selection semantics, native permissions and questions, cancellation evidence, tool parts, and child-agent transcript shape. Normalize only behaviors required at an actual shared boundary; do not force every integration through `AgentProvider`.
+
+**Scope of acceptance:** This ADR approves the **integration-selection policy** and retention of the current ACP OpenCode lane. It does **not** approve the experimental native OpenCode runtime for production, replace ACP, introduce new integrations, or change the TypeScript contracts.
+
+
 
 ## Options considered
 
@@ -33,7 +38,14 @@ Agent-specific behavior remains agent-specific: project/workspace selection, pro
 - ACP remains an implementation choice for this native OpenCode integration, not a rule for every future agent.
 - Future adapter work must record actual package/peer versions, project/session ownership, native cancellation/permission semantics, and evidence for each advertised capability.
 - A native OpenCode lane may reduce app-owned code, but requires a focused security/session-isolation follow-up before it can replace or join the app's default path.
-- The authoritative TypeScript contracts remain in `lib/agent/contracts/`; this ADR documents policy and does not define a second contract.
+- `lib/agent/contracts/` remains authoritative for the provider-neutral lane; the shared frontend uses assistant-ui's upstream `AssistantRuntime` contract. No second contract or cross-adapter translation requirement is created.
+
+## Prerequisites for considering a native OpenCode production lane
+
+- Prove project-scoped session listing, interaction authorization and caller/session ownership with an isolated OpenCode data store or a minimal authorized proxy; loopback and CORS alone do not enforce project isolation.
+- Resolve the published adapter/server title-generation HTTP 400 and dependency compatibility warning against pinned versions.
+- Verify native cancellation outcomes and permission races, context/cross-window isolation, and disconnection/reload/process-loss recovery before claiming parity.
+- Compare retained upstream benefits against the actual proxy/server operations cost, using the linked spike as the baseline. A separate implementation PR must carry these tests and any warranted contract changes.
 
 ## Reconsider when
 
