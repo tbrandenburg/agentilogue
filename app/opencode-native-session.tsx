@@ -116,8 +116,8 @@ export function OpenCodeNativeSessionRuntime(props: Props) {
           className="rounded-md border bg-background px-3 py-2 text-sm"
         />
         <p className="text-xs text-muted-foreground">
-          Held in memory for this tab only. A temporary workaround skips the adapter's invalid
-          title request; OpenCode may supply a title after the first prompt.
+          Held in memory for this tab only. A temporary workaround skips the adapter's invalid title
+          request; OpenCode may supply a title after the first prompt.
         </p>
         {error && (
           <p role="alert" className="text-sm text-destructive">
