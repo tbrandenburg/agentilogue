@@ -14,7 +14,7 @@ The project starts from the assistant-ui minimal template. The existing AI SDK +
 - Follow KISS and YAGNI. Prefer the smallest design that solves a demonstrated requirement.
 - Maximize reuse of existing libraries, especially assistant-ui and the libraries already in the repository. Configure, compose, or adapt before writing replacements.
 - Do not reinvent primitives that a maintained dependency already solves well.
-- Prefer existing assistant-ui primitives over custom replacements.
+- Prefer existing assistant-ui primitives and maintained runtime integrations over custom replacements.
 - Do not remove or complicate the working AI SDK path to add agent integrations.
 - Add abstractions only when a real second implementation needs them.
 - Treat opencode as the first proof, not the only target. Planned agent CLI targets include opencode, pi, codex, claude code, and github copilot; SDK-backed integrations may follow where useful.
@@ -47,35 +47,27 @@ assistant-ui -> useChatRuntime -> /api/chat -> AI SDK -> OpenAI
 
 Keep this path working.
 
-## Planned agent path
+## Agent integration selection
 
-The minimal direction is:
+Every chat lane provides assistant-ui's `AssistantRuntime` to the existing `Thread`. Existing integrations:
 
-```text
-assistant-ui
-    |
-ExternalStoreRuntime / AssistantTransport
-    |
-/api/agent
-    |
-AgentProvider
-    |
-agent runtime/provider
-```
+- **AI SDK:** `useChatRuntime → /api/chat → AI SDK`.
+- **OpenCode ACP:** `useExternalStoreRuntime → /api/agent → AgentProvider → OpenCode ACP`.
 
-For the first provider, the route should call the provider directly. Add a small provider factory only when a second provider creates a real selection problem. A registry or service comes later only if dynamic registration, discovery, orchestration, or shared lifecycle behavior actually requires it.
+For a new agent, **evaluate a maintained assistant-ui runtime first**. Use it directly if installed versions, project/session isolation, native controls, lifecycle correctness and capabilities are validated. Otherwise choose an appropriate native SDK/protocol with the smallest necessary server boundary.
+
+`AgentProvider` and `lib/agent/contracts/` are authoritative **for our provider-neutral backend lane**, not universal interfaces that native assistant-ui runtimes must implement. Never create a second projection layer merely to route a maintained runtime through `RunSnapshot` or `AgentRunEvent`. ACP is a useful option for local agent processes, not a compulsory protocol.
+
+See [ADR 0001](docs/decisions/0001-agent-integration-lanes.md) for the accepted selection policy, [CONTRACTS.md](docs/CONTRACTS.md) for the provider-neutral contract, and [ARCHITECTURE.md](docs/ARCHITECTURE.md) for the lane diagram.
 
 ## Development approach
 
-1. Keep the UI working, polished, and minimal.
-2. Reuse existing libraries before adding custom code.
-3. Draft the smallest provider-neutral contracts.
-4. Validate them with one deep opencode integration.
-5. Challenge the resulting contract against pi, codex, claude code, and github copilot before treating it as stable.
-6. Add SDK-backed implementations later where they provide meaningful benefits.
-7. Only then extract patterns for ACP, A2A, LangGraph, Eve, or other runtimes.
-
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the current architecture notes.
+1. Keep the UI minimal and the existing AI SDK and ACP paths working.
+2. Inspect maintained assistant-ui adapters and the agent's official SDK/protocol before writing glue.
+3. Prove project/session ownership, independent permissions/cancellation and honest native outcomes in the actual deployment.
+4. Reuse `AgentProvider` only where the backend truly benefits from the existing provider-neutral contract.
+5. Preserve native capabilities and document unsupported or untested behavior; add shared APIs only after two real implementations need them.
+6. Prefer a small factory for two implementations of the **same backend port**, not a universal runtime registry.
 
 ## Lessons Learned
 
