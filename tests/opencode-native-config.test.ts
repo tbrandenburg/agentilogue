@@ -21,10 +21,7 @@ describe("OpenCode native server gate", () => {
   });
 
   it("keeps the native lane unavailable without its explicit opt-in", () => {
-    assert.equal(
-      getOpenCodeNativeAvailability({ ...valid, enabled: "0" }).enabled,
-      false,
-    );
+    assert.equal(getOpenCodeNativeAvailability({ ...valid, enabled: "0" }).enabled, false);
   });
 
   it("rejects server URLs that are not root-only http loopback URLs", () => {
