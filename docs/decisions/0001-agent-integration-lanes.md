@@ -23,8 +23,6 @@ Agent-specific behavior remains agent-specific: project/workspace selection, pro
 
 **Scope of acceptance:** This ADR approves the **integration-selection policy** and retention of the current ACP OpenCode lane. It does **not** approve the experimental native OpenCode runtime for production, replace ACP, introduce new integrations, or change the TypeScript contracts.
 
-
-
 ## Options considered
 
 - **Keep ACP for OpenCode:** selected for the current product lane; preserves the server-owned project/session boundary and has live lifecycle evidence.
