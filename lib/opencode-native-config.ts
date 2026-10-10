@@ -53,13 +53,12 @@ export function getOpenCodeNativeAvailability(
     return { enabled: false, reason: "Configure the app origin without a path" };
   }
 
-  // The pinned adapter 0.2.29 sends a bodyless summarize request, which returns
-  // 400 on the tested OpenCode 1.18.32 and 1.18.35 servers. No env override may
-  // enable a known-broken adapter/server pair.
+  // An explicit opt-in allows browser E2E with the temporary SDK fetch workaround
+  // for assistant-ui/assistant-ui#9244. This is not production readiness; the
+  // native adapter's remaining lifecycle/permission behavior still needs E2E.
   return {
-    enabled: false,
-    reason:
-      "Disabled: pinned adapter title generation is incompatible; wait for a verified upstream fix",
+    enabled: true,
+    baseUrl: new URL(serverAddress).origin,
     appOrigin: appUrl.origin,
   };
 }
