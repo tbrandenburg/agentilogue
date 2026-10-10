@@ -69,8 +69,6 @@ See [ADR 0001](docs/decisions/0001-agent-integration-lanes.md) for the accepted 
 5. Preserve native capabilities and document unsupported or untested behavior; add shared APIs only after two real implementations need them.
 6. Prefer a small factory for two implementations of the **same backend port**, not a universal runtime registry.
 
-
-
 ## Lessons Learned
 
 - 2026-10-06: Pitfall: Concurrent Next.js dev servers from one checkout share `.next` state and can reject the second server. Prevention: Run simultaneous app variants from separate worktrees and inspect startup logs before browser testing.
