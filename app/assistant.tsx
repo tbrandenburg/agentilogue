@@ -11,10 +11,11 @@ import { SessionControlsProvider } from "@/components/assistant-ui/elements/sess
 import type { RunTargetId } from "@/lib/run-target";
 import type { OpenCodeNativeAvailability } from "@/lib/opencode-native-config";
 import { parseStoredNativeSessions, serializeNativeSessions } from "@/lib/native-session-storage";
+import type { NativeSelection } from "@/lib/native-selection";
 import { AGENT_THREAD_COMPONENTS, OpenCodeSessionRuntime } from "./opencode-session";
 import { OpenCodeNativeSessionRuntime } from "./opencode-native-session";
 
-type ChatSession = {
+type ChatSession = NativeSelection & {
   id: string;
   title: string;
   projectName: string;

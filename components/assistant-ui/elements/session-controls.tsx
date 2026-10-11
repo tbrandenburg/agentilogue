@@ -18,12 +18,15 @@ import {
   type ModelOption,
 } from "@/components/assistant-ui/elements/model-selector";
 import { CommandItem } from "@/components/ui/command";
+import { nativeModelId } from "@/lib/native-selection";
+import type { NativeCatalog, NativeSelection } from "@/lib/native-selection";
 
-type Config = {
+type Config = NativeSelection & {
   projectName: string;
   openCodeProjectName: string;
   runTarget: RunTargetId | null;
   model?: string;
+  nativeSessionId?: string;
 };
 type Props = {
   config: Config;
@@ -31,6 +34,8 @@ type Props = {
   hasOpenCodeApi: boolean;
   hasOpenCodeNative?: boolean;
   nativeOpenCodeReason?: string;
+  nativeCatalog?: NativeCatalog;
+  nativeSelectionReason?: string;
   onChange: (patch: Partial<Config>) => void;
 };
 
@@ -104,12 +109,17 @@ export function SessionControls({
   hasOpenCodeApi,
   hasOpenCodeNative,
   nativeOpenCodeReason,
+  nativeCatalog,
+  nativeSelectionReason,
   onChange,
 }: Props) {
   const hasMessages = useAuiState((state) => state.thread.messages.length > 0);
   const isRunning = useAuiState((state) => state.thread.isRunning);
   const isSubmitting = useAuiState((state) => state.composer.submission !== undefined);
   const [modelsExpanded, setModelsExpanded] = useState(false);
+  const isNative = config.runTarget === "opencode:native";
+  const nativeLocked = hasMessages || Boolean(config.nativeSessionId);
+  const nativeEnabled = Boolean(nativeCatalog) && !nativeLocked && !isRunning && !isSubmitting;
   const tierModels = Object.entries(models.openai.tiers).filter(
     (entry): entry is [string, string] => typeof entry[1] === "string",
   );
@@ -140,7 +150,7 @@ export function SessionControls({
       <Picker
         label="Run with"
         value={config.runTarget ?? "none"}
-        disabled={hasMessages}
+        disabled={hasMessages || (isNative && nativeLocked)}
         formatValue={(value) =>
           value === "none"
             ? "None"
@@ -150,6 +160,8 @@ export function SessionControls({
           onChange({
             runTarget: value === "none" ? null : (value as RunTargetId),
             model: undefined,
+            nativeModel: undefined,
+            nativeAgent: undefined,
           })
         }
       >
@@ -177,73 +189,128 @@ export function SessionControls({
           OpenCode · Native unavailable: {nativeOpenCodeReason}
         </span>
       )}
-      <Picker label="Agent" value="default" disabled formatValue={() => "Default"}>
-        <Option value="default">Default</Option>
-      </Picker>
-      <ModelSelectorRoot
-        models={options}
-        value={config.model ?? DEFAULT_OPTION_ID}
-        onValueChange={(value) => onChange({ model: modelFromSelectorValue(value) })}
-        onOpenChange={(open) => {
-          if (!open) setModelsExpanded(false);
-        }}
-      >
-        <ModelSelectorTrigger
-          aria-label="Model"
-          disabled={!modelEnabled}
-          variant="ghost"
-          size="sm"
-          className={`${buttonClass} max-w-40`}
-        >
-          <span className="truncate">Model · </span>
-          <ModelSelectorValue placeholder="Default" className="min-w-0 flex-1 [&>span]:truncate" />
-        </ModelSelectorTrigger>
-        <ModelSelectorContent searchable={false} className="max-h-[min(28rem,calc(100vh-2rem))]">
-          <ModelSelectorList className="max-h-[min(28rem,calc(100vh-2rem))] overflow-y-auto">
-            <ModelSelectorGroup heading="">
-              <ModelSelectorItem model={options[0]!} disabled={!modelEnabled}>
-                <span className="truncate">Default</span>
-              </ModelSelectorItem>
-            </ModelSelectorGroup>
-            <ModelSelectorGroup heading="Preconfigured">
-              {tierModels.map(([tier, id]) => {
-                const model = modelById.get(id);
-                if (!model) return null;
-                return (
-                  <ModelSelectorItem key={tier} model={model} disabled={!modelEnabled}>
-                    <span className="flex min-w-0 flex-1 items-center justify-between gap-5">
-                      <span className="font-medium capitalize">{tier}</span>
-                      <span className="text-muted-foreground truncate text-xs">{id}</span>
-                    </span>
-                  </ModelSelectorItem>
-                );
-              })}
-            </ModelSelectorGroup>
-            <CommandItem
-              value="__models_disclosure__"
-              onSelect={() => setModelsExpanded((expanded) => !expanded)}
-              className="cursor-pointer"
+      {isNative ? (
+        <>
+          <Picker
+            label="Agent"
+            value={config.nativeAgent ?? ""}
+            disabled={!nativeEnabled}
+            formatValue={(value) => value || "Default"}
+            onValueChange={(value) => onChange({ nativeAgent: value || undefined })}
+          >
+            <Option value="">Default</Option>
+            {nativeCatalog?.agents.map((agent) => (
+              <Option key={agent} value={agent}>
+                {agent}
+              </Option>
+            ))}
+          </Picker>
+          <Picker
+            label="Model"
+            value={config.nativeModel ? nativeModelId(config.nativeModel) : ""}
+            disabled={!nativeEnabled}
+            formatValue={() =>
+              config.nativeModel
+                ? `${config.nativeModel.providerID}/${config.nativeModel.modelID}`
+                : "Default"
+            }
+            onValueChange={(value) =>
+              onChange({
+                nativeModel: nativeCatalog?.models.find((option) => option.id === value)?.model,
+              })
+            }
+          >
+            <Option value="">Default</Option>
+            {nativeCatalog?.models.map((option) => (
+              <Option key={option.id} value={option.id}>
+                {option.name}
+              </Option>
+            ))}
+          </Picker>
+          <span role="status" className="basis-full px-1.5 text-xs text-muted-foreground">
+            {nativeSelectionReason ??
+              (!nativeCatalog
+                ? "Loading OpenCode models and agents…"
+                : "Default delegates to OpenCode: the agent’s model, otherwise the session/server model. Choices lock after the first message; start a new session to reset them.")}
+          </span>
+        </>
+      ) : (
+        <>
+          <Picker label="Agent" value="default" disabled formatValue={() => "Default"}>
+            <Option value="default">Default</Option>
+          </Picker>
+          <ModelSelectorRoot
+            models={options}
+            value={config.model ?? DEFAULT_OPTION_ID}
+            onValueChange={(value) => onChange({ model: modelFromSelectorValue(value) })}
+            onOpenChange={(open) => {
+              if (!open) setModelsExpanded(false);
+            }}
+          >
+            <ModelSelectorTrigger
+              aria-label="Model"
+              disabled={!modelEnabled}
+              variant="ghost"
+              size="sm"
+              className={`${buttonClass} max-w-40`}
             >
-              {modelsExpanded ? "▾ Models" : "▸ Models"}
-            </CommandItem>
-            {modelsExpanded &&
-              Object.entries(models).map(([creator, catalog]) => {
-                const catalogOptions = catalog.models
-                  .filter((id) => creator !== "openai" || !tierIds.has(id))
-                  .map((id) => modelById.get(id))
-                  .filter((model): model is ModelOption => model !== undefined);
-                if (catalogOptions.length === 0) return null;
-                return (
-                  <ModelSelectorGroup key={creator} heading={creatorLabels[creator] ?? creator}>
-                    {catalogOptions.map((model) => (
-                      <ModelSelectorItem key={model.id} model={model} />
-                    ))}
-                  </ModelSelectorGroup>
-                );
-              })}
-          </ModelSelectorList>
-        </ModelSelectorContent>
-      </ModelSelectorRoot>
+              <span className="truncate">Model · </span>
+              <ModelSelectorValue
+                placeholder="Default"
+                className="min-w-0 flex-1 [&>span]:truncate"
+              />
+            </ModelSelectorTrigger>
+            <ModelSelectorContent
+              searchable={false}
+              className="max-h-[min(28rem,calc(100vh-2rem))]"
+            >
+              <ModelSelectorList className="max-h-[min(28rem,calc(100vh-2rem))] overflow-y-auto">
+                <ModelSelectorGroup heading="">
+                  <ModelSelectorItem model={options[0]!} disabled={!modelEnabled}>
+                    <span className="truncate">Default</span>
+                  </ModelSelectorItem>
+                </ModelSelectorGroup>
+                <ModelSelectorGroup heading="Preconfigured">
+                  {tierModels.map(([tier, id]) => {
+                    const model = modelById.get(id);
+                    if (!model) return null;
+                    return (
+                      <ModelSelectorItem key={tier} model={model} disabled={!modelEnabled}>
+                        <span className="flex min-w-0 flex-1 items-center justify-between gap-5">
+                          <span className="font-medium capitalize">{tier}</span>
+                          <span className="text-muted-foreground truncate text-xs">{id}</span>
+                        </span>
+                      </ModelSelectorItem>
+                    );
+                  })}
+                </ModelSelectorGroup>
+                <CommandItem
+                  value="__models_disclosure__"
+                  onSelect={() => setModelsExpanded((expanded) => !expanded)}
+                  className="cursor-pointer"
+                >
+                  {modelsExpanded ? "▾ Models" : "▸ Models"}
+                </CommandItem>
+                {modelsExpanded &&
+                  Object.entries(models).map(([creator, catalog]) => {
+                    const catalogOptions = catalog.models
+                      .filter((id) => creator !== "openai" || !tierIds.has(id))
+                      .map((id) => modelById.get(id))
+                      .filter((model): model is ModelOption => model !== undefined);
+                    if (catalogOptions.length === 0) return null;
+                    return (
+                      <ModelSelectorGroup key={creator} heading={creatorLabels[creator] ?? creator}>
+                        {catalogOptions.map((model) => (
+                          <ModelSelectorItem key={model.id} model={model} />
+                        ))}
+                      </ModelSelectorGroup>
+                    );
+                  })}
+              </ModelSelectorList>
+            </ModelSelectorContent>
+          </ModelSelectorRoot>
+        </>
+      )}
     </div>
   );
 }

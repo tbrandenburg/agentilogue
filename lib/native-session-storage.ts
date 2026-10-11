@@ -1,6 +1,7 @@
 import { z } from "zod";
+import type { NativeSelection } from "./native-selection";
 
-export type NativeChatSession = {
+export type NativeChatSession = NativeSelection & {
   id: string;
   title: string;
   projectName: string;
@@ -24,6 +25,10 @@ const storedSessionsSchema = z.object({
       runTarget: z.literal("opencode:native"),
       nativeSessionId: z.string().min(1),
       model: z.string().optional(),
+      nativeModel: z
+        .object({ providerID: z.string().min(1), modelID: z.string().min(1) })
+        .optional(),
+      nativeAgent: z.string().min(1).optional(),
     }),
   ),
 });
@@ -56,7 +61,7 @@ export function parseStoredNativeSessions(
 }
 
 export function serializeNativeSessions(
-  sessions: readonly {
+  sessions: readonly (NativeSelection & {
     id: string;
     title: string;
     projectName: string;
@@ -64,7 +69,7 @@ export function serializeNativeSessions(
     runTarget: string | null;
     nativeSessionId?: string;
     model?: string;
-  }[],
+  })[],
   activeId: string,
   projectName: string,
   openCodeProjectName: string,
