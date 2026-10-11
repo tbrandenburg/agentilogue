@@ -17,10 +17,10 @@ export function hasOpenCodeTerminalEvidence(
 }
 
 export function classifyOpenCodeOutcome(
-  isBusy: boolean,
+  status: boolean | "busy" | "retry" | "idle" | undefined,
   hasTerminalEvidence: boolean,
 ): "active" | "terminal" | "unknown" {
-  if (isBusy) return "active";
+  if (status === true || status === "busy" || status === "retry") return "active";
   return hasTerminalEvidence ? "terminal" : "unknown";
 }
 

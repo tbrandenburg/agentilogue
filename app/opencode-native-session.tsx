@@ -198,7 +198,13 @@ function ConnectedOpenCodeSession({
   password,
   onDisconnect,
 }: Props & { baseUrl: string; password: string; onDisconnect: () => void }) {
-  const guard = useMemo(() => createOpenCodeRunGuard(fetch), []);
+  const guard = useMemo(() => {
+    const key = `agentilogue:native-cancellation:${baseUrl}:${session.id}`;
+    return createOpenCodeRunGuard(fetch, {
+      load: () => window.sessionStorage.getItem(key),
+      save: (value) => window.sessionStorage.setItem(key, value),
+    });
+  }, [baseUrl, session.id]);
   const [client] = useState(() => createAuthenticatedClient(baseUrl, password, guard.fetch));
   const runtime = useOpenCodeRuntime({
     client,

@@ -1,5 +1,9 @@
 const PERMISSION_REPLY_PATH = /^\/permission\/([^/]+)\/reply$/;
 const SESSION_ABORT_PATH = /^\/session\/[^/]+\/abort$/;
+const SESSION_PROMPT_PATH = /^\/session\/([^/]+)\/prompt_async$/;
+
+type GuardState = { cancelled: boolean; invalidated: string[] };
+type GuardStorage = { load: () => string | null; save: (value: string) => void };
 
 export type OpenCodeRunGuard = {
   readonly trackPending: (ids: Iterable<string>) => void;
@@ -10,29 +14,69 @@ export type OpenCodeRunGuard = {
   readonly fetch: typeof fetch;
 };
 
-export function createOpenCodeRunGuard(delegate: typeof fetch): OpenCodeRunGuard {
+export function createOpenCodeRunGuard(
+  delegate: typeof fetch,
+  storage?: GuardStorage,
+): OpenCodeRunGuard {
   const pending = new Set<string>();
   const invalidated = new Set<string>();
   const listeners = new Set<() => void>();
   let revision = 0;
+  let cancelled = false;
+  if (storage) {
+    const raw = storage.load();
+    if (raw) {
+      const state: unknown = JSON.parse(raw);
+      if (
+        typeof state !== "object" ||
+        state === null ||
+        !("cancelled" in state) ||
+        typeof state.cancelled !== "boolean" ||
+        !("invalidated" in state) ||
+        !Array.isArray(state.invalidated) ||
+        !state.invalidated.every((id: unknown) => typeof id === "string")
+      )
+        throw new Error("Invalid OpenCode cancellation state");
+      cancelled = state.cancelled;
+      for (const id of state.invalidated) invalidated.add(id);
+    }
+  }
+
+  const persist = () => {
+    const state: GuardState = { cancelled, invalidated: [...invalidated] };
+    storage?.save(JSON.stringify(state));
+  };
 
   const notify = () => {
     revision += 1;
     for (const listener of listeners) listener();
   };
+  const invalidate = () => {
+    cancelled = true;
+    for (const id of pending) invalidated.add(id);
+    pending.clear();
+    persist();
+    notify();
+  };
 
   return {
     trackPending(ids) {
       pending.clear();
-      for (const id of ids) if (!invalidated.has(id)) pending.add(id);
+      let changed = false;
+      for (const id of ids) {
+        if (cancelled && !invalidated.has(id)) {
+          invalidated.add(id);
+          changed = true;
+        }
+        if (!invalidated.has(id)) pending.add(id);
+      }
+      if (changed) {
+        persist();
+        notify();
+      }
     },
-    invalidatePending() {
-      if (pending.size === 0) return;
-      for (const id of pending) invalidated.add(id);
-      pending.clear();
-      notify();
-    },
-    isInvalidated: (id) => invalidated.has(id),
+    invalidatePending: invalidate,
+    isInvalidated: (id) => cancelled || invalidated.has(id),
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
@@ -43,18 +87,52 @@ export function createOpenCodeRunGuard(delegate: typeof fetch): OpenCodeRunGuard
         input instanceof Request && init === undefined ? input : new Request(input, init);
       const { pathname } = new URL(request.url);
       const reply = request.method === "POST" ? PERMISSION_REPLY_PATH.exec(pathname) : null;
-      if (reply && invalidated.has(decodeURIComponent(reply[1]!))) {
+      if (reply && (cancelled || invalidated.has(decodeURIComponent(reply[1]!)))) {
         throw new Error("This OpenCode permission was cancelled and is no longer available.");
       }
       if (request.method === "POST" && SESSION_ABORT_PATH.test(pathname)) {
-        // Do this before the delegate sees the abort request, including failed aborts.
-        for (const id of pending) invalidated.add(id);
-        if (pending.size > 0) {
-          pending.clear();
-          notify();
-        }
+        // Latch cancellation before forwarding, even if React has not committed the approval.
+        invalidate();
       }
       (request as Request & { timeout?: boolean }).timeout = false;
+      const prompt = request.method === "POST" ? SESSION_PROMPT_PATH.exec(pathname) : null;
+      if (prompt && cancelled) {
+        const cancellation = revision;
+        return (async () => {
+          // Quarantine stale server requests before admitting a new run.
+          const url = new URL("/permission", request.url);
+          const response = await delegate(
+            new Request(url, {
+              headers: request.headers,
+              signal: AbortSignal.timeout(5_000),
+            }),
+          );
+          if (!response.ok) throw new Error("Could not reconcile cancelled OpenCode permissions");
+          const entries: unknown = await response.json();
+          if (!Array.isArray(entries)) throw new Error("Invalid OpenCode permission response");
+          for (const entry of entries) {
+            if (
+              typeof entry !== "object" ||
+              entry === null ||
+              !("sessionID" in entry) ||
+              typeof entry.sessionID !== "string" ||
+              !("id" in entry) ||
+              typeof entry.id !== "string"
+            ) {
+              throw new Error("Invalid OpenCode permission response");
+            }
+            if (entry.sessionID === decodeURIComponent(prompt[1]!)) invalidated.add(entry.id);
+          }
+          if (revision !== cancellation) {
+            persist();
+            throw new Error("OpenCode prompt was cancelled during permission reconciliation");
+          }
+          cancelled = false;
+          persist();
+          notify();
+          return delegate(request);
+        })();
+      }
       return delegate(request);
     },
   };

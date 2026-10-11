@@ -39,6 +39,8 @@ describe("native OpenCode outcome evidence", () => {
 
   it("treats a busy session as active and missing terminal evidence as unknown", () => {
     assert.equal(classifyOpenCodeOutcome(true, false), "active");
+    assert.equal(classifyOpenCodeOutcome("retry", false), "active");
+    assert.equal(classifyOpenCodeOutcome("retry", true), "active");
     assert.equal(classifyOpenCodeOutcome(false, true), "terminal");
     assert.equal(classifyOpenCodeOutcome(false, false), "unknown");
   });
