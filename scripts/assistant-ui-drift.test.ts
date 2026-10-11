@@ -1,7 +1,10 @@
-import { readFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { checkFile, formattedDigest } from "./assistant-ui-drift";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { checkFile, formattedDigest, sourceDiff } from "./assistant-ui-drift";
 
 const manifest = {
   formatter: "oxfmt@0.68.0",
@@ -76,6 +79,39 @@ describe("assistant-ui copied-source drift check", () => {
       ],
     };
     assert.equal((await checkFile(updated, "thread.tsx", approvedSource)).ok, true);
+  });
+
+  it("shows a committed source diff against the pull request base", async () => {
+    const repository = await mkdtemp(join(tmpdir(), "assistant-ui-drift-git-"));
+    const runGit = (...args: string[]) =>
+      execFileSync("git", args, {
+        cwd: repository,
+        env: {
+          ...process.env,
+          GIT_AUTHOR_NAME: "assistant-ui drift test",
+          GIT_AUTHOR_EMAIL: "drift-test@example.invalid",
+          GIT_COMMITTER_NAME: "assistant-ui drift test",
+          GIT_COMMITTER_EMAIL: "drift-test@example.invalid",
+        },
+      });
+
+    try {
+      runGit("init", "--quiet");
+      await writeFile(join(repository, "thread.tsx"), 'const value = "ready";\n');
+      runGit("add", "thread.tsx");
+      runGit("commit", "--quiet", "-m", "baseline");
+      const base = runGit("rev-parse", "HEAD").toString().trim();
+
+      await writeFile(join(repository, "thread.tsx"), 'const value = "changed";\n');
+      runGit("add", "thread.tsx");
+      runGit("commit", "--quiet", "-m", "functional change");
+
+      const diff = sourceDiff(repository, "thread.tsx", base);
+      assert.match(diff, /-const value = "ready"/);
+      assert.match(diff, /\+const value = "changed"/);
+    } finally {
+      await rm(repository, { recursive: true, force: true });
+    }
   });
 
   it("tracks only the copied Thread component", async () => {

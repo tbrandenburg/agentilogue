@@ -47,6 +47,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       - run: bun run assistant-ui:drift-check
+        env:
+          ASSISTANT_UI_DRIFT_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}

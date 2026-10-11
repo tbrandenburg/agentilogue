@@ -39,6 +39,28 @@ export const formattedDigest = async (source: string, filename: string): Promise
   }
 };
 
+export const sourceDiff = (cwd: string, filename: string, baseRef?: string): string => {
+  const workingTreeDiff = spawnSync("git", ["diff", "--no-ext-diff", "--", filename], {
+    cwd,
+    encoding: "utf8",
+  });
+  if (workingTreeDiff.status === 0 && workingTreeDiff.stdout.trim())
+    return workingTreeDiff.stdout.trim();
+
+  const ref = baseRef ?? process.env.ASSISTANT_UI_DRIFT_BASE;
+  if (!ref) return "";
+
+  const committedDiff = spawnSync(
+    "git",
+    ["diff", "--no-ext-diff", `${ref}...HEAD`, "--", filename],
+    {
+      cwd,
+      encoding: "utf8",
+    },
+  );
+  return committedDiff.status === 0 ? committedDiff.stdout.trim() : "";
+};
+
 export const checkFile = async (
   manifest: Manifest,
   filename: string,
@@ -54,10 +76,7 @@ export const checkFile = async (
   const approved = entry.approvedPatches
     .map((patch) => `${patch.name} (${patch.introducedBy})`)
     .join(", ");
-  const diff = spawnSync("git", ["diff", "--", filename], {
-    cwd: root,
-    encoding: "utf8",
-  }).stdout.trim();
+  const diff = sourceDiff(root, filename);
   return {
     ok: false,
     message: [
