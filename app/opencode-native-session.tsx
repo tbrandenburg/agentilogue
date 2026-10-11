@@ -17,6 +17,7 @@ import { Thread } from "@/components/assistant-ui/elements/thread.aui";
 import type { ThreadComponents } from "@/components/assistant-ui/elements/thread.aui";
 import { ToolFallback as ThreadDefaultToolFallback } from "@/components/assistant-ui/elements/tool-fallback.aui";
 import { SessionControlsProvider } from "@/components/assistant-ui/elements/session-controls-slot";
+import { NativeOpenCodeSessionControls } from "@/components/assistant-ui/elements/native-opencode-session-controls";
 import type { OpenCodeNativeAvailability } from "@/lib/opencode-native-config";
 import { isOpenCodeNativeOriginAllowed } from "@/lib/opencode-native-config";
 import { createOpenCodeRunGuard } from "@/lib/opencode-native-run-guard";
@@ -251,12 +252,18 @@ function ConnectedOpenCodeSession({
           hasOpenCodeApi={hasOpenCodeApi}
           hasOpenCodeNative={nativeOpenCode.enabled}
           nativeOpenCodeReason={undefined}
-          nativeCatalog={catalog}
-          nativeSelectionReason={
-            catalogError ??
-            (catalog && !selectionAvailable
-              ? "Saved native selection is unavailable on this server. Start a new session to choose again."
-              : undefined)
+          providerControls={
+            <NativeOpenCodeSessionControls
+              config={session}
+              catalog={catalog}
+              selectionReason={
+                catalogError ??
+                (catalog && !selectionAvailable
+                  ? "Saved native selection is unavailable on this server. Start a new session to choose again."
+                  : undefined)
+              }
+              onChange={onUpdate}
+            />
           }
           onChange={onUpdate}
         >
