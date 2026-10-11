@@ -5,11 +5,7 @@ import { useOpenCodePermissions, useOpenCodeThreadState } from "@assistant-ui/re
 import type { OpencodeClient } from "@opencode-ai/sdk/v2/client";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { OpenCodeRunGuard } from "@/lib/opencode-native-run-guard";
-import { createOpenCodeRecheck } from "@/lib/opencode-native-recheck";
-import {
-  classifyOpenCodeHistoryOutcome,
-  classifyOpenCodeOutcome,
-} from "@/lib/opencode-native-outcome";
+import { createOpenCodeRecheck, readOpenCodeRecoveryOutcome } from "@/lib/opencode-native-recheck";
 
 export function NativeOpenCodeStatus({
   guard,
@@ -40,6 +36,7 @@ function NativeOpenCodeStatusReady({
   const isRunning = useAuiState((thread) => thread.thread.isRunning);
   const lastEventAt = state.sync.lastEventAt;
   const [unknownOutcome, setUnknownOutcome] = useState(true);
+  const [recoveryRequired, setRecoveryRequired] = useState(false);
   const [serverReportsBusy, setServerReportsBusy] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
   const staleAt = useRef<number | undefined>(undefined);
@@ -58,19 +55,10 @@ function NativeOpenCodeStatusReady({
     () =>
       enqueue(async (current) => {
         try {
-          const statusResult = await client.session.status(
-            {},
-            { signal: AbortSignal.timeout(5_000) },
-          );
-          if (!current()) return;
-          if (statusResult.error || statusResult.response.status !== 200) {
-            setServerReportsBusy(false);
-            setUnknownOutcome(true);
-            return;
-          }
-          const latestStatus = statusResult.data?.[sessionId];
-          const statusOutcome = classifyOpenCodeOutcome(latestStatus?.type, false);
-          if (statusOutcome === "active") {
+          const outcome = await readOpenCodeRecoveryOutcome(client, sessionId, current);
+          if (!current() || outcome === undefined) return;
+          setRecoveryRequired(false);
+          if (outcome === "active") {
             const eventStreamIsQuiet =
               lastEventAt === undefined || Date.now() - lastEventAt >= 10_000;
             setServerReportsBusy(eventStreamIsQuiet);
@@ -84,20 +72,11 @@ function NativeOpenCodeStatusReady({
             return;
           }
           setServerReportsBusy(false);
-          const historyResult = await client.session.messages(
-            { sessionID: sessionId },
-            { signal: AbortSignal.timeout(5_000) },
-          );
-          if (!current()) return;
-          if (historyResult.error || historyResult.response.status !== 200) {
-            setUnknownOutcome(true);
-            return;
-          }
-          const outcome = classifyOpenCodeHistoryOutcome(historyResult.data ?? []);
           setUnknownOutcome(outcome === "unknown");
           if (outcome === "terminal") setAcknowledged(false);
         } catch {
           if (!current()) return;
+          setRecoveryRequired(true);
           setUnknownOutcome(true);
           setServerReportsBusy(false);
         }
@@ -151,7 +130,13 @@ function NativeOpenCodeStatusReady({
 
   return (
     <>
-      {unknownOutcome && !acknowledged ? (
+      {recoveryRequired ? (
+        <p role="status" className="px-4 py-2 text-xs text-amber-700 dark:text-amber-300">
+          Connection could not recover. Reload this page and reconnect by entering the OpenCode
+          server password to restore this session.
+        </p>
+      ) : null}
+      {unknownOutcome && (!acknowledged || recoveryRequired) ? (
         <div
           role="status"
           className="flex items-center gap-2 px-4 py-2 text-xs text-amber-700 dark:text-amber-300"

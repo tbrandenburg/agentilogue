@@ -71,6 +71,10 @@ See [ADR 0001](docs/decisions/0001-agent-integration-lanes.md) for the accepted 
 
 ## Lessons Learned
 
+- 2026-10-11: Pitfall: Source typechecks missed unsupported exports in Next.js route modules until generated validators existed. Prevention: Keep testable handler factories outside route modules and validate generated route types after browser runs or a production build.
+
+- 2026-10-11: Pitfall: Browser proof imports resolved undeclared dependencies from an ancestor workspace. Prevention: Declare proof dependencies and validate a frozen-lockfile install outside the ancestor dependency tree before trusting build results.
+
 - 2026-10-06: Pitfall: Concurrent Next.js dev servers from one checkout share `.next` state and can reject the second server. Prevention: Run simultaneous app variants from separate worktrees and inspect startup logs before browser testing.
 - 2026-10-06: Pitfall: A full filesystem can leave partial checkout writes when `git switch` or `git worktree add` fails. Prevention: Check `df -h` before checkout/worktree operations; after failure, inspect `git status` and verify or restore the tree before continuing.
 - 2026-10-07: Pitfall: Unescaped Markdown backticks in a shell-quoted GitHub CLI body triggered command substitution and corrupted the PR text. Prevention: Write multiline PR bodies to a temporary file and pass `--body-file`; verify the published body before proceeding.

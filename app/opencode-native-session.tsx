@@ -20,11 +20,13 @@ import { SessionControlsProvider } from "@/components/assistant-ui/elements/sess
 import type { OpenCodeNativeAvailability } from "@/lib/opencode-native-config";
 import { isOpenCodeNativeOriginAllowed } from "@/lib/opencode-native-config";
 import { createOpenCodeRunGuard } from "@/lib/opencode-native-run-guard";
+import { discoverNativeCatalog, nativeSelectionAvailable } from "@/lib/native-selection";
+import type { NativeCatalog, NativeSelection } from "@/lib/native-selection";
 import type { RunTargetId } from "@/lib/run-target";
 import { AGENT_THREAD_COMPONENTS } from "./opencode-session";
 import { NativeOpenCodeStatus } from "./opencode-native-status";
 
-type NativeSession = {
+type NativeSession = NativeSelection & {
   id: string;
   projectName: string;
   openCodeProjectName: string;
@@ -151,6 +153,7 @@ export function OpenCodeNativeSessionRuntime(props: Props) {
         </button>
         <button
           type="button"
+          disabled={Boolean(props.session.nativeSessionId)}
           onClick={() => props.onUpdate({ runTarget: null })}
           className="self-start rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
         >
@@ -204,8 +207,29 @@ function ConnectedOpenCodeSession({
     });
   }, [baseUrl, session.id]);
   const [client] = useState(() => createAuthenticatedClient(baseUrl, password, guard.fetch));
+  const [catalog, setCatalog] = useState<NativeCatalog>();
+  const [catalogError, setCatalogError] = useState<string>();
+  useEffect(() => {
+    const controller = new AbortController();
+    const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(30_000)]);
+    void discoverNativeCatalog(client, signal)
+      .then((discovered) => {
+        if (!controller.signal.aborted) setCatalog(discovered);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted)
+          setCatalogError(
+            "OpenCode catalog discovery failed. Default chat remains available; explicit choices require a verified catalog. Reconnect to retry discovery.",
+          );
+      });
+    return () => controller.abort();
+  }, [client]);
+  const selectionAvailable = nativeSelectionAvailable(catalog, session);
   const runtime = useOpenCodeRuntime({
     client,
+    defaultModel: session.nativeModel,
+    defaultAgent: session.nativeAgent,
+    isDisabled: !selectionAvailable,
     initialSessionId: session.nativeSessionId,
     onThreadIdChange: (nativeSessionId) => {
       if (nativeSessionId) onUpdate({ nativeSessionId });
@@ -227,6 +251,13 @@ function ConnectedOpenCodeSession({
           hasOpenCodeApi={hasOpenCodeApi}
           hasOpenCodeNative={nativeOpenCode.enabled}
           nativeOpenCodeReason={undefined}
+          nativeCatalog={catalog}
+          nativeSelectionReason={
+            catalogError ??
+            (catalog && !selectionAvailable
+              ? "Saved native selection is unavailable on this server. Start a new session to choose again."
+              : undefined)
+          }
           onChange={onUpdate}
         >
           <div className="relative h-full">

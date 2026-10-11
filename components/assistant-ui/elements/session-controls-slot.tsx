@@ -3,12 +3,14 @@
 import { createContext, useContext, type PropsWithChildren } from "react";
 import { SessionControls } from "@/components/assistant-ui/elements/session-controls";
 import type { RunTargetId } from "@/lib/run-target";
+import type { NativeCatalog, NativeSelection } from "@/lib/native-selection";
 
-type SessionControlsConfig = {
+type SessionControlsConfig = NativeSelection & {
   projectName: string;
   openCodeProjectName: string;
   runTarget: RunTargetId | null;
   model?: string;
+  nativeSessionId?: string;
 };
 
 type SessionControlsContextValue = {
@@ -17,6 +19,8 @@ type SessionControlsContextValue = {
   hasOpenCodeApi: boolean;
   hasOpenCodeNative?: boolean;
   nativeOpenCodeReason?: string;
+  nativeCatalog?: NativeCatalog;
+  nativeSelectionReason?: string;
   onChange: (patch: Partial<SessionControlsConfig>) => void;
 };
 
@@ -42,6 +46,8 @@ export function AgentilogueSessionControlsSlot() {
       hasOpenCodeApi={value.hasOpenCodeApi}
       hasOpenCodeNative={value.hasOpenCodeNative ?? false}
       nativeOpenCodeReason={value.nativeOpenCodeReason}
+      nativeCatalog={value.nativeCatalog}
+      nativeSelectionReason={value.nativeSelectionReason}
       onChange={value.onChange}
     />
   );

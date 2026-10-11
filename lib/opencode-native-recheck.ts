@@ -1,3 +1,29 @@
+import type { OpencodeClient } from "@opencode-ai/sdk/v2/client";
+import { classifyOpenCodeHistoryOutcome, classifyOpenCodeOutcome } from "./opencode-native-outcome";
+
+export async function readOpenCodeRecoveryOutcome(
+  client: OpencodeClient,
+  sessionId: string,
+  current: () => boolean,
+  timeout = 5_000,
+) {
+  const status = await client.session.status({}, { signal: AbortSignal.timeout(timeout) });
+  if (!current()) return;
+  if (status.error || status.response.status !== 200) {
+    throw new Error("OpenCode status recheck failed");
+  }
+  if (classifyOpenCodeOutcome(status.data?.[sessionId]?.type, false) === "active") return "active";
+  const history = await client.session.messages(
+    { sessionID: sessionId },
+    { signal: AbortSignal.timeout(timeout) },
+  );
+  if (!current()) return;
+  if (history.error || history.response.status !== 200) {
+    throw new Error("OpenCode history recheck failed");
+  }
+  return classifyOpenCodeHistoryOutcome(history.data ?? []);
+}
+
 export function createOpenCodeRecheck() {
   let revision = 0;
   let running: Promise<void> | undefined;
