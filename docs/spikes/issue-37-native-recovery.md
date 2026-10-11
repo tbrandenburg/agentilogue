@@ -67,6 +67,12 @@ AI SDK, ACP, native controls/session/storage and coordinator tooling files have 
 
 ## Validation
 
+### Integrated coordinator verification
+
+`node tests/e2e/native-recovery.mjs` completed against the combined #37/#38 changes after independent review strengthened readiness and recovery assertions. Normal two-tab sessions, failed-recheck guidance (including acknowledgement), and reload/password/transcript/unknown/no-resend checks passed. Short idle continuation **failed** its 15-second reply window. Active-run same-mount recovery **failed** after both 2-second and 16-second downtime: primary-origin health timed out in 5001ms while the alternate loopback alias returned HTTP 200 in 17ms. Restored history returned HTTP 200 in 2089ms and 1790ms. Five explicit prompt POSTs were recorded; exact owned processes stopped and ports 14371/14372 were free. These results supersede any assumption that short outages reliably recover, without establishing a transport root cause.
+
+The selector proof also passed on this integrated checkout, including real AI SDK/ACP responses, native approvals/cancellation and reload. The coordinator moved API handler factories outside Next route modules so generated route validation can run rather than deleting validators.
+
 ```sh
 bun run format app/opencode-native-status.tsx lib/opencode-native-recheck.ts tests/opencode-native-recovery.test.ts tests/e2e/native-recovery.mjs docs/spikes/issue-37-native-recovery.md
 bun run lint

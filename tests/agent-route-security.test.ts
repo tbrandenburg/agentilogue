@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { createPostHandler, GET } from "@/app/api/agent/route";
+import { createGetHandler, createPostHandler } from "@/lib/agent/http-handlers";
 import type { AgentProvider } from "@/lib/agent/contracts/provider";
 
 const startBody = JSON.stringify({
@@ -35,7 +35,7 @@ function setup() {
       return "dispatched" as const;
     },
   } as unknown as AgentProvider;
-  return { calls, post: createPostHandler(provider) };
+  return { calls, post: createPostHandler(provider), get: createGetHandler(provider) };
 }
 
 function request(
@@ -147,11 +147,13 @@ it("rejects cross-origin and source-less observation GETs before provider lookup
     { host: "localhost:3000" },
   ];
   for (const headers of invalidHeaders) {
-    const response = await GET(
+    const { calls, get } = setup();
+    const response = await get(
       new Request("http://localhost:3000/api/agent?runId=00000000-0000-4000-8000-000000000000", {
         headers,
       }),
     );
     assert.equal(response.status, 403);
+    assert.equal(calls.observe, 0);
   }
 });

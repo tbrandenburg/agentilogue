@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { AssistantTransportDecoder } from "assistant-stream";
-import { createGetHandler } from "@/app/api/agent/route";
+import { createGetHandler } from "@/lib/agent/http-handlers";
 import type { AgentProvider } from "@/lib/agent/contracts/provider";
 import { ConversationIdSchema, RunIdSchema } from "@/lib/agent/contracts/identifiers";
 import type { RunObservation } from "@/lib/agent/contracts/run";

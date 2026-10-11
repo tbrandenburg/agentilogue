@@ -167,6 +167,7 @@ try {
     await panel().getByLabel("OpenCode server password").fill(password);
     await panel().getByRole("button", { name: "Connect to OpenCode", exact: true }).click();
     await panel().getByRole("button", { name: "Disconnect", exact: true }).waitFor();
+    await panel().getByRole("textbox").and(page.locator(":enabled")).waitFor({ timeout: 35000 });
   }
   async function native() {
     await panel().getByRole("combobox", { name: "Run with", exact: true }).click();
@@ -270,6 +271,7 @@ try {
       assert.ok((await panel().innerText()).includes(marker));
       console.log("PASS outage guidance/transcript/unknown", outage, "elapsed", Date.now() - began);
     }
+    const restartedAt = Date.now();
     server = startServer();
     await ready(`${serverUrl}/global/health`, { Authorization: auth });
     console.log("outage until healthy", outage, Date.now() - began);
@@ -303,7 +305,17 @@ try {
         .waitFor();
       console.log("PASS failed recheck guidance survives acknowledgement", outage);
     }
-    const recent = network.filter((entry) => entry.at >= began);
+    const recent = network.filter((entry) => entry.at >= restartedAt);
+    const successful = (path) =>
+      recent.some((entry) => entry.path === path && entry.status === 200 && !entry.failure);
+    const evidence = {
+      healthy: probe.status === 200,
+      status: successful("/session/status"),
+      history: successful(`/session/${sessionId}/message`),
+      events: successful("/event") || successful("/global/event"),
+    };
+    const sameMountRecovery =
+      !needsRecovery && evidence.healthy && evidence.status && evidence.history && evidence.events;
     const alias = await page.evaluate(
       async ({ url, authorization }) => {
         const began = performance.now();
@@ -322,8 +334,13 @@ try {
     console.log(
       "same-mount",
       outage,
-      needsRecovery ? "FAIL" : "PASS",
+      sameMountRecovery
+        ? "PASS"
+        : needsRecovery
+          ? "FAIL: recovery guidance remains"
+          : "FAIL/inconclusive: missing positive native reattach evidence",
       JSON.stringify({
+        evidence,
         probe,
         alias,
         pending: recent.filter((entry) => !entry.status && !entry.failure).map(({ path }) => path),
@@ -335,7 +352,7 @@ try {
       }),
     );
     assert.equal(prompts(), before, "no outage/recheck prompt resend");
-    if (outage === 16000 || needsRecovery) {
+    if (outage === 16000 || !sameMountRecovery) {
       await page.reload();
       await connect();
       await panel().getByText(marker, { exact: true }).waitFor({ timeout: 30000 });

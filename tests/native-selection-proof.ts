@@ -4,6 +4,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, openSync, closeSync, existsSync } from "node:fs";
 import { createServer } from "node:net";
 import { chromium } from "playwright";
+import { expect } from "playwright/test";
 import { createOpencodeClient } from "@opencode-ai/sdk/v2/client";
 
 const app = "http://127.0.0.1:14381";
@@ -104,14 +105,23 @@ async function connect() {
   }
 }
 async function send(text: string) {
-  // A kept-mounted background composer may commit pending state on tab activation.
-  await panel().getByRole("textbox", { name: "Message input" }).waitFor();
-  await new Promise((resolve) => setTimeout(resolve, 500));
-  await panel().getByRole("textbox", { name: "Message input" }).fill(text);
+  const active = panel().and(page.locator('[tabindex="0"]:not([inert])'));
+  const input = active.getByRole("textbox", { name: "Message input", exact: true });
+  const button = active.getByRole("button", { name: "Send message", exact: true });
   try {
-    await panel()
-      .getByRole("button", { name: "Send message", exact: true })
-      .click({ timeout: 120_000 });
+    // Activation can reset controlled text; retry entry, never the send click.
+    await expect(async () => {
+      await expect(active).toHaveCount(1, { timeout: 5000 });
+      await expect(input).toBeEnabled({ timeout: 5000 });
+      await expect(input).toBeEditable({ timeout: 5000 });
+      await input.click();
+      await input.fill("");
+      await input.pressSequentially(text);
+      await expect(input).toHaveValue(text, { timeout: 5000 });
+      await expect(button).toBeEnabled({ timeout: 5000 });
+      await expect(input).toHaveValue(text, { timeout: 5000 });
+    }).toPass({ timeout: 120_000, intervals: [100, 250, 500] });
+    await button.click({ timeout: 120_000 });
   } catch (error) {
     console.log(await panel().innerText());
     throw error;
