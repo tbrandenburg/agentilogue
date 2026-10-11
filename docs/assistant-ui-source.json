@@ -1,0 +1,22 @@
+{
+  "formatter": "oxfmt@0.68.0",
+  "upstream": {
+    "repository": "assistant-ui/assistant-ui",
+    "commit": "dc840613f1edbe9cebcc01d0112add781aca0449",
+    "path": "packages/ui/src/components/react/assistant-ui/elements/thread.aui.tsx",
+    "blob": "fbffa25727755ff79817c1a94cda1b0ad325b412"
+  },
+  "files": [
+    {
+      "path": "components/assistant-ui/elements/thread.aui.tsx",
+      "formattedSha256": "0508d4ab2921d9a0d1ec69d679791b988bee5cf2165995b3131688f83691dd16",
+      "approvedPatches": [
+        {
+          "name": "ComposerActionLeft",
+          "reason": "Expose the session controls accessory beside the attachment control.",
+          "introducedBy": "issue #41"
+        }
+      ]
+    }
+  ]
+}
