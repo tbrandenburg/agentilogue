@@ -27,10 +27,16 @@ The intentional `thread.aui.tsx` patchset is limited to:
 1. `ThreadComponents.ComposerActionLeft`, a generic optional composer accessory
    rendered beside the attachment control while preserving stock markup when
    absent.
-2. `s.composer.canSend` in the new-chat suggestion condition so suggestions
-   cannot bypass agentilogue's fail-closed send state.
+
+The welcome-suggestion condition now matches the pinned registry source: it
+checks only for a new chat with an empty composer. The former local
+`s.composer.canSend` guard hid suggestions when an otherwise-ready composer was
+empty. Send-enabled suggestions now rely on the core runtime send policy,
+including `isSendDisabled`, enforced by assistant-ui's suggestion trigger
+([upstream fix #8941](https://github.com/assistant-ui/assistant-ui/pull/8941),
+included in the `@assistant-ui/core@0.3.25` line pinned here at `0.3.26`).
 
 Session tabs, running-state reporting, the SessionControls provider/slot,
 ModelContextBridge, model catalog/validation, and RunTarget policy live outside
-Thread. On the next upgrade, start with the released registry bundle, check for
-an official composer accessory slot, then reapply or remove these two patches.
+Thread. On the next upgrade, start with the released registry bundle and check
+for an official composer accessory slot before reapplying that one patch.
