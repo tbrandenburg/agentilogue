@@ -1,17 +1,29 @@
 "use client";
 
 import { AssistantRuntimeProvider, useAuiState } from "@assistant-ui/react";
+import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import { useOpenCodeRuntime } from "@assistant-ui/react-opencode";
 import { createOpencodeClient } from "@opencode-ai/sdk/v2/client";
-import { useCallback, useEffect, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { Thread } from "@/components/assistant-ui/elements/thread.aui";
 import type { ThreadComponents } from "@/components/assistant-ui/elements/thread.aui";
+import { ToolFallback as ThreadDefaultToolFallback } from "@/components/assistant-ui/elements/tool-fallback.aui";
 import { SessionControlsProvider } from "@/components/assistant-ui/elements/session-controls-slot";
 import type { OpenCodeNativeAvailability } from "@/lib/opencode-native-config";
 import { isOpenCodeNativeOriginAllowed } from "@/lib/opencode-native-config";
 import { withOpenCodeTitleWorkaround } from "@/lib/opencode-native-title-workaround";
+import { createOpenCodeRunGuard } from "@/lib/opencode-native-run-guard";
 import type { RunTargetId } from "@/lib/run-target";
 import { AGENT_THREAD_COMPONENTS } from "./opencode-session";
+import { NativeOpenCodeStatus } from "./opencode-native-status";
 
 type NativeSession = {
   id: string;
@@ -76,9 +88,14 @@ export function OpenCodeNativeSessionRuntime(props: Props) {
             const unauthenticated = createOpencodeClient({ baseUrl: availability.baseUrl });
             let unauthenticatedResult;
             try {
-              unauthenticatedResult = await unauthenticated.global.health();
+              unauthenticatedResult = await unauthenticated.global.health({
+                signal: AbortSignal.timeout(5_000),
+              });
             } catch {
               // SDK transport failures are not proof that Basic auth is enabled.
+              throw new Error("Could not verify OpenCode Basic auth");
+            }
+            if (!unauthenticatedResult?.response) {
               throw new Error("Could not verify OpenCode Basic auth");
             }
             if (unauthenticatedResult.response.status !== 401) {
@@ -87,7 +104,12 @@ export function OpenCodeNativeSessionRuntime(props: Props) {
               );
             }
             const authenticated = createAuthenticatedClient(availability.baseUrl, password);
-            const authenticatedResult = await authenticated.global.health();
+            const authenticatedResult = await authenticated.global.health({
+              signal: AbortSignal.timeout(5_000),
+            });
+            if (!authenticatedResult?.response) {
+              throw new Error("Could not connect to OpenCode");
+            }
             if (authenticatedResult.response.status !== 200 || authenticatedResult.error) {
               throw new Error("OpenCode rejected the password; check the server password");
             }
@@ -150,13 +172,17 @@ export function OpenCodeNativeSessionRuntime(props: Props) {
   );
 }
 
-function createAuthenticatedClient(baseUrl: string, password: string) {
+function createAuthenticatedClient(
+  baseUrl: string,
+  password: string,
+  fetcher: typeof fetch = fetch,
+) {
   const bytes = new TextEncoder().encode(`opencode:${password}`);
   const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join("");
   return createOpencodeClient({
     baseUrl,
     headers: { Authorization: `Basic ${btoa(binary)}` },
-    fetch: withOpenCodeTitleWorkaround(fetch),
+    fetch: withOpenCodeTitleWorkaround(fetcher),
   });
 }
 
@@ -172,7 +198,8 @@ function ConnectedOpenCodeSession({
   password,
   onDisconnect,
 }: Props & { baseUrl: string; password: string; onDisconnect: () => void }) {
-  const [client] = useState(() => createAuthenticatedClient(baseUrl, password));
+  const guard = useMemo(() => createOpenCodeRunGuard(fetch), []);
+  const [client] = useState(() => createAuthenticatedClient(baseUrl, password, guard.fetch));
   const runtime = useOpenCodeRuntime({
     client,
     initialSessionId: session.nativeSessionId,
@@ -187,28 +214,55 @@ function ConnectedOpenCodeSession({
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      <NativeRunningStateReporter onRunningChange={reportRunning} />
-      <SessionControlsProvider
-        config={session}
-        hasOpenAIKey={hasOpenAIKey}
-        hasOpenCodeApi={hasOpenCodeApi}
-        hasOpenCodeNative={nativeOpenCode.enabled}
-        nativeOpenCodeReason={undefined}
-        onChange={onUpdate}
-      >
-        <div className="relative h-full">
-          <button
-            type="button"
-            onClick={onDisconnect}
-            className="absolute right-2 top-2 z-10 rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
-          >
-            Disconnect
-          </button>
-          <Thread components={THREAD_COMPONENTS} autoFocus={isActive} />
-        </div>
-      </SessionControlsProvider>
+      <NativeGuardContext.Provider value={guard}>
+        <NativeRunningStateReporter onRunningChange={reportRunning} />
+        <NativeOpenCodeStatus guard={guard} client={client} sessionId={session.nativeSessionId} />
+        <SessionControlsProvider
+          config={session}
+          hasOpenAIKey={hasOpenAIKey}
+          hasOpenCodeApi={hasOpenCodeApi}
+          hasOpenCodeNative={nativeOpenCode.enabled}
+          nativeOpenCodeReason={undefined}
+          onChange={onUpdate}
+        >
+          <div className="relative h-full">
+            <button
+              type="button"
+              onClick={onDisconnect}
+              className="absolute right-2 top-2 z-10 rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
+            >
+              Disconnect
+            </button>
+            <Thread components={NATIVE_THREAD_COMPONENTS} autoFocus={isActive} />
+          </div>
+        </SessionControlsProvider>
+      </NativeGuardContext.Provider>
     </AssistantRuntimeProvider>
   );
+}
+
+const NATIVE_THREAD_COMPONENTS: ThreadComponents = {
+  ...THREAD_COMPONENTS,
+  ToolFallback: NativeToolFallback,
+};
+
+function NativeToolFallback(props: ToolCallMessagePartProps) {
+  const guard = useGuardContext();
+  useSyncExternalStore(guard.subscribe, guard.getSnapshot, guard.getSnapshot);
+  const { isInvalidated } = guard;
+  if (props.approval?.id && isInvalidated(props.approval.id))
+    return (
+      <p className="text-xs text-muted-foreground">Cancelled — approval no longer available</p>
+    );
+  return <ThreadDefaultToolFallback {...props} />;
+}
+
+const NativeGuardContext = createContext<ReturnType<typeof createOpenCodeRunGuard> | null>(null);
+
+function useGuardContext() {
+  const guard = useContext(NativeGuardContext);
+  if (!guard) throw new Error("OpenCode native run guard is unavailable");
+  return guard;
 }
 
 function NativeRunningStateReporter({
