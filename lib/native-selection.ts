@@ -1,3 +1,5 @@
+import type { OpencodeClient } from "@opencode-ai/sdk/v2/client";
+
 export type NativeSelection = {
   nativeModel?: { providerID: string; modelID: string };
   nativeAgent?: string;
@@ -32,7 +34,20 @@ export function nativeCatalog(
   };
 }
 
-export function nativeSelectionAvailable(catalog: NativeCatalog, selection: NativeSelection) {
+export async function discoverNativeCatalog(client: OpencodeClient, signal: AbortSignal) {
+  const [providers, agents] = await Promise.all([
+    client.provider.list({}, { signal, throwOnError: true }),
+    client.app.agents({}, { signal, throwOnError: true }),
+  ]);
+  return nativeCatalog(providers.data, agents.data);
+}
+
+export function nativeSelectionAvailable(
+  catalog: NativeCatalog | undefined,
+  selection: NativeSelection,
+) {
+  if (!selection.nativeModel && !selection.nativeAgent) return true;
+  if (!catalog) return false;
   const model = selection.nativeModel;
   return (
     (!model || catalog.models.some((option) => option.id === nativeModelId(model))) &&

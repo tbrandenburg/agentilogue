@@ -20,7 +20,7 @@ import { SessionControlsProvider } from "@/components/assistant-ui/elements/sess
 import type { OpenCodeNativeAvailability } from "@/lib/opencode-native-config";
 import { isOpenCodeNativeOriginAllowed } from "@/lib/opencode-native-config";
 import { createOpenCodeRunGuard } from "@/lib/opencode-native-run-guard";
-import { nativeCatalog, nativeSelectionAvailable } from "@/lib/native-selection";
+import { discoverNativeCatalog, nativeSelectionAvailable } from "@/lib/native-selection";
 import type { NativeCatalog, NativeSelection } from "@/lib/native-selection";
 import type { RunTargetId } from "@/lib/run-target";
 import { AGENT_THREAD_COMPONENTS } from "./opencode-session";
@@ -212,20 +212,19 @@ function ConnectedOpenCodeSession({
   useEffect(() => {
     const controller = new AbortController();
     const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(30_000)]);
-    void Promise.all([
-      client.provider.list({}, { signal, throwOnError: true }),
-      client.app.agents({}, { signal, throwOnError: true }),
-    ])
-      .then(([providers, agents]) => {
-        if (!controller.signal.aborted) setCatalog(nativeCatalog(providers.data, agents.data));
+    void discoverNativeCatalog(client, signal)
+      .then((discovered) => {
+        if (!controller.signal.aborted) setCatalog(discovered);
       })
       .catch(() => {
         if (!controller.signal.aborted)
-          setCatalogError("OpenCode catalog discovery failed. Reconnect to retry.");
+          setCatalogError(
+            "OpenCode catalog discovery failed. Default chat remains available; explicit choices require a verified catalog. Reconnect to retry discovery.",
+          );
       });
     return () => controller.abort();
   }, [client]);
-  const selectionAvailable = catalog && nativeSelectionAvailable(catalog, session);
+  const selectionAvailable = nativeSelectionAvailable(catalog, session);
   const runtime = useOpenCodeRuntime({
     client,
     defaultModel: session.nativeModel,

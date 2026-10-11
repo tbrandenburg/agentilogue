@@ -360,6 +360,40 @@ try {
     ["gpt-4.1", "gpt-4.1"],
   );
   console.log("PASS real server explicit→omission inherits gpt-4.1; reset requires new session");
+  // Drop only catalog traffic; prompts/history still use the real server and model.
+  for (const endpoint of ["provider", "agent"]) {
+    const blocked = `${server}/${endpoint}`;
+    await page.route(blocked, (route) => route.abort("failed"));
+    await page.reload();
+    await page.getByRole("tab", { name: "chat 4", exact: true }).click();
+    await panel().getByLabel("OpenCode server password", { exact: true }).fill(password);
+    await panel().getByRole("button", { name: "Connect to OpenCode", exact: true }).click();
+    await panel().getByText("OpenCode catalog discovery failed.", { exact: false }).waitFor();
+    await expect(panel().getByRole("textbox", { name: "Message input" })).toBeDisabled();
+    for (const label of ["Model", "Agent"]) {
+      await expect(panel().getByRole("combobox", { name: label, exact: true })).toBeDisabled();
+    }
+    const prompts = requests.filter((request) => request.path.endsWith("/prompt_async")).length;
+    await page.getByRole("tab", { name: "chat 3", exact: true }).click();
+    await panel().getByLabel("OpenCode server password", { exact: true }).fill(password);
+    await panel().getByRole("button", { name: "Connect to OpenCode", exact: true }).click();
+    await panel().getByText("OpenCode catalog discovery failed.", { exact: false }).waitFor();
+    for (const label of ["Model", "Agent"]) {
+      await expect(panel().getByRole("combobox", { name: label, exact: true })).toBeDisabled();
+    }
+    await send(`Reply exactly DEFAULT_WITHOUT_${endpoint.toUpperCase()}_40, no tools.`);
+    await panel()
+      .getByText(`DEFAULT_WITHOUT_${endpoint.toUpperCase()}_40`, { exact: true })
+      .waitFor({ timeout: 120_000 });
+    assert.equal(
+      requests.filter((request) => request.path.endsWith("/prompt_async")).length,
+      prompts + 1,
+    );
+    await page.unroute(blocked);
+    console.log(
+      `PASS failed ${endpoint} discovery: real Default reply, disabled pickers, saved explicit send blocked`,
+    );
+  }
 } finally {
   await browser.close();
   const processes = spawnSync("ps", ["-eo", "pid=,ppid="], { encoding: "utf8" })

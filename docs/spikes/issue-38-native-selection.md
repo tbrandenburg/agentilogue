@@ -95,6 +95,8 @@ Formatter and linter pass without warnings.
 
 ## Integration caveat
 
+PR #40's focused P2 follow-up permits Default model/agent sending before discovery and after catalog failure. Pickers still require successful discovery; saved explicit choices remain fail-closed without a catalog or a matching entry. The browser proof now individually aborts provider and agent catalog requests (fault injection only; prompts and replies use the real server/model), verifies disabled pickers and saved-explicit rejection, and receives a real Default reply in each case. `bun test` passes 110 tests; isolated frozen-lockfile production build and generated-route typecheck pass. The handler export caveat below was resolved during integration. #37's recovery guidance/reload restoration work; same-mounted-page seamless reconnect remains unreliable.
+
 Source typecheck passes with disposable `.next` output removed. After a dev run,
 `bun run typecheck` sees Next-generated route validation and fails on the existing
 `app/api/agent/route.ts` export `createPostHandler` (`.next/dev/types/app/api/agent/route.ts:14`).

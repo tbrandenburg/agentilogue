@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { nativeCatalog, nativeModelId, nativeSelectionAvailable } from "../lib/native-selection";
+import { createOpencodeClient } from "@opencode-ai/sdk/v2/client";
+import {
+  discoverNativeCatalog,
+  nativeCatalog,
+  nativeModelId,
+  nativeSelectionAvailable,
+} from "../lib/native-selection";
 import { parseStoredNativeSessions, serializeNativeSessions } from "../lib/native-session-storage";
 
 const catalog = nativeCatalog(
@@ -21,6 +27,62 @@ const catalog = nativeCatalog(
 );
 
 describe("native catalog and tab selection", () => {
+  it("permits Default sending before discovery while rejecting unvalidated explicit choices", () => {
+    assert.equal(nativeSelectionAvailable(undefined, {}), true);
+    for (const selection of [
+      { nativeModel: { providerID: "one", modelID: "same" } },
+      { nativeAgent: "build" },
+      { nativeModel: { providerID: "one", modelID: "same" }, nativeAgent: "build" },
+    ]) {
+      assert.equal(nativeSelectionAvailable(undefined, selection), false);
+    }
+  });
+  for (const endpoint of ["/provider", "/agent"]) {
+    it(`keeps Default available and rejects saved explicit selections after ${endpoint} discovery fails`, async () => {
+      const requests: string[] = [];
+      const client = createOpencodeClient({
+        baseUrl: "http://localhost:4096",
+        fetch: async (request) => {
+          const path = new URL(request instanceof Request ? request.url : String(request)).pathname;
+          requests.push(path);
+          if (path === endpoint) return Response.json({ error: "unavailable" }, { status: 503 });
+          return Response.json(
+            path === "/provider"
+              ? { connected: ["one"], all: [{ id: "one", models: { same: { id: "same" } } }] }
+              : [{ name: "build", mode: "primary" }],
+          );
+        },
+      });
+      let discovered;
+      await assert.rejects(async () => {
+        discovered = await discoverNativeCatalog(client, AbortSignal.timeout(1000));
+      });
+      assert.deepEqual(requests.sort(), ["/agent", "/provider"]);
+      assert.equal(discovered, undefined);
+      assert.equal(nativeSelectionAvailable(discovered, {}), true);
+      const base = {
+        id: "saved",
+        title: "chat 1",
+        projectName: "app",
+        openCodeProjectName: "project",
+        runTarget: "opencode:native",
+        nativeSessionId: "server-saved",
+      };
+      for (const selection of [
+        { nativeModel: { providerID: "one", modelID: "same" } },
+        { nativeAgent: "build" },
+      ]) {
+        const stored = parseStoredNativeSessions(
+          serializeNativeSessions([{ ...base, ...selection }], "saved", "app", "project"),
+          "app",
+          "project",
+        );
+        assert.ok(stored);
+        assert.equal(nativeSelectionAvailable(discovered, stored.sessions[0]!), false);
+        assert.equal(nativeSelectionAvailable(catalog, stored.sessions[0]!), true);
+      }
+    });
+  }
   it("keeps connected provider/model pairs distinct, including model IDs containing slashes", () => {
     assert.deepEqual(
       catalog.models.map((option) => option.name),
