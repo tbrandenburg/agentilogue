@@ -1,6 +1,6 @@
-# OpenCode Runtime
+# opencode Runtime
 
-`@assistant-ui/react-opencode` wires [OpenCode](https://opencode.ai/), an open-source AI coding agent, into an assistant-ui thread via `ExternalStoreRuntime` plus a `RemoteThreadList` for session-backed threads. OpenCode sessions map to threads; the runtime subscribes to the server's SSE event stream.
+`@assistant-ui/react-opencode` wires [opencode](https://opencode.ai/), an open-source AI coding agent, into an assistant-ui thread via `ExternalStoreRuntime` plus a `RemoteThreadList` for session-backed threads. opencode sessions map to threads; the runtime subscribes to the server's SSE event stream.
 
 This adapter is at v0.0.3 and experimental; the runtime API and exported hooks may change without notice.
 
@@ -14,7 +14,7 @@ This adapter is at v0.0.3 and experimental; the runtime API and exported hooks m
 npm install @assistant-ui/react @assistant-ui/react-opencode @opencode-ai/sdk
 ```
 
-Requires a running [OpenCode](https://opencode.ai/) server (defaults to `http://localhost:4096`).
+Requires a running [opencode](https://opencode.ai/) server (defaults to `http://localhost:4096`).
 
 ## Quickstart
 
@@ -52,11 +52,11 @@ const runtime = useOpenCodeRuntime({ client });
 
 ## Sub-agent conversations
 
-OpenCode `task` tool calls expose their child session through tool metadata. The runtime loads those child sessions eagerly (every `task` part in a subscribed thread's transcript fetches its child, whether or not any tool card is expanded), keeps each one synced from the same event stream, and projects the transcript into `ToolCallMessagePart.messages`. Parallel and recursively nested tasks are supported. A `task` part carries `messages` only once its child session has loaded; while loading, it projects as an ordinary tool call, so an empty `messages` array always means the sub-agent produced nothing. Render it with [`MessagePartPrimitive.Messages`](../../tools/SKILL.md); nested conversations are read-only and inherit the parent's tool renderers.
+opencode `task` tool calls expose their child session through tool metadata. The runtime loads those child sessions eagerly (every `task` part in a subscribed thread's transcript fetches its child, whether or not any tool card is expanded), keeps each one synced from the same event stream, and projects the transcript into `ToolCallMessagePart.messages`. Parallel and recursively nested tasks are supported. A `task` part carries `messages` only once its child session has loaded; while loading, it projects as an ordinary tool call, so an empty `messages` array always means the sub-agent produced nothing. Render it with [`MessagePartPrimitive.Messages`](../../tools/SKILL.md); nested conversations are read-only and inherit the parent's tool renderers.
 
 ## Hooks
 
-OpenCode pauses tool execution to ask permission (shell commands, file writes). Permissions linked to a tool call project into assistant-ui's standard tool approval contract, so the default `ToolFallback` renders working Allow / Always allow / Deny without a custom component. `useOpenCodePermissions()` remains available for custom renderers and permission requests not linked to a tool call:
+opencode pauses tool execution to ask permission (shell commands, file writes). Permissions linked to a tool call project into assistant-ui's standard tool approval contract, so the default `ToolFallback` renders working Allow / Always allow / Deny without a custom component. `useOpenCodePermissions()` remains available for custom renderers and permission requests not linked to a tool call:
 
 ```tsx
 import { useOpenCodePermissions } from "@assistant-ui/react-opencode";
@@ -65,7 +65,7 @@ const { pending, reply } = useOpenCodePermissions();
 // reply(id, "once" | "always" | "reject")
 ```
 
-OpenCode can also ask interactive questions mid-run:
+opencode can also ask interactive questions mid-run:
 
 ```tsx
 import { useOpenCodeQuestions, useOpenCodeRuntimeExtras } from "@assistant-ui/react-opencode";
@@ -77,7 +77,7 @@ const { replyToQuestion, rejectQuestion } = useOpenCodeRuntimeExtras();
 
 | Hook | Returns |
 | --- | --- |
-| `useOpenCodeSession()` | The current OpenCode `Session` (server-side metadata) |
+| `useOpenCodeSession()` | The current opencode `Session` (server-side metadata) |
 | `useOpenCodeThreadState(selector?)` | Full projected thread state: messages, run state, `childSessionsById`, `interactions.{permissions,questions}`, sync metadata |
 | `useOpenCodeRuntimeExtras()` | `fork(messageId)`, `revert(messageId)`, `unrevert()`, `cancel()`, `refresh()`, `replyToPermission`, `replyToQuestion`, `rejectQuestion` |
 
@@ -89,4 +89,4 @@ const isStreaming = useOpenCodeThreadState((s) => s.runState.type === "streaming
 
 ## Lower-level building blocks
 
-For custom integrations that bypass `useOpenCodeRuntime`: `OpenCodeEventSource` (typed subscription over the server's event stream), `OpenCodeThreadController` (per-session state controller), `createOpenCodeThreadState`/`reduceOpenCodeThreadState` (pure reducers), `projectOpenCodeThreadMessages` (raw OpenCode messages to assistant-ui thread messages). Most apps should use `useOpenCodeRuntime` directly instead.
+For custom integrations that bypass `useOpenCodeRuntime`: `OpenCodeEventSource` (typed subscription over the server's event stream), `OpenCodeThreadController` (per-session state controller), `createOpenCodeThreadState`/`reduceOpenCodeThreadState` (pure reducers), `projectOpenCodeThreadMessages` (raw opencode messages to assistant-ui thread messages). Most apps should use `useOpenCodeRuntime` directly instead.

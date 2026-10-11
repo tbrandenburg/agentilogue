@@ -15,7 +15,7 @@ export type RunTargetDefinition = {
 export const runTargets: readonly RunTargetDefinition[] = [
   { id: "openai:vercel-ai", label: "AI SDK · OpenAI" },
   { id: "opencode:cli", label: "opencode" },
-  { id: "opencode:native", label: "OpenCode · Native" },
+  { id: "opencode:native", label: "opencode · Native" },
   { id: "pi:cli", label: "pi" },
   { id: "codex:cli", label: "codex" },
   { id: "claude-code:cli", label: "claude code" },

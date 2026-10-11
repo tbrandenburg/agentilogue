@@ -13,7 +13,7 @@ const serverPort = Number(process.env.RECOVERY_SERVER_PORT ?? 14372);
 const appUrl = `http://127.0.0.1:${appPort}`;
 const serverUrl = `http://127.0.0.1:${serverPort}`;
 const guidance =
-  "Connection could not recover. Reload this page and reconnect by entering the OpenCode server password to restore this session.";
+  "Connection could not recover. Reload this page and reconnect by entering the opencode server password to restore this session.";
 const delay = (ms) => new Promise((done) => setTimeout(done, ms));
 const root = process.cwd();
 const binary = process.env.RECOVERY_OPENCODE_BIN ?? "opencode";
@@ -163,15 +163,15 @@ try {
   });
   const panel = () => page.getByRole("tabpanel").filter({ visible: true });
   async function connect() {
-    assert.equal(await panel().getByLabel("OpenCode server password").inputValue(), "");
-    await panel().getByLabel("OpenCode server password").fill(password);
-    await panel().getByRole("button", { name: "Connect to OpenCode", exact: true }).click();
+    assert.equal(await panel().getByLabel("opencode server password").inputValue(), "");
+    await panel().getByLabel("opencode server password").fill(password);
+    await panel().getByRole("button", { name: "Connect to opencode", exact: true }).click();
     await panel().getByRole("button", { name: "Disconnect", exact: true }).waitFor();
     await panel().getByRole("textbox").and(page.locator(":enabled")).waitFor({ timeout: 35000 });
   }
   async function native() {
     await panel().getByRole("combobox", { name: "Run with", exact: true }).click();
-    await page.getByRole("option", { name: "OpenCode · Native", exact: true }).click();
+    await page.getByRole("option", { name: "opencode · Native", exact: true }).click();
     await connect();
   }
   async function prompt(text) {

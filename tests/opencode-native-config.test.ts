@@ -5,7 +5,7 @@ import {
   isOpenCodeNativeOriginAllowed,
 } from "../lib/opencode-native-config";
 
-describe("OpenCode native server gate", () => {
+describe("opencode native server gate", () => {
   const valid = {
     enabled: "1",
     url: "http://127.0.0.1:4096",

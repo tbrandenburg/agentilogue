@@ -57,7 +57,7 @@ async function snapshotResponse(runId: string): Promise<Response> {
   return new Response(encoder.readable, { headers: Object.fromEntries(encoder.headers) });
 }
 
-describe("OpenCode observer reconnect", () => {
+describe("opencode observer reconnect", () => {
   it("stops automatic retries for permanent HTTP errors", async () => {
     for (const status of [403, 404]) {
       let requests = 0;

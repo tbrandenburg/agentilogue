@@ -4,13 +4,13 @@
 
 Use the existing authenticated browser SDK client and upstream runtime. Installed
 `@assistant-ui/react-opencode` **0.2.30**, `@opencode-ai/sdk` **1.18.35**, and real
-OpenCode CLI/authenticated server health **1.18.35** were checked before implementation.
+opencode CLI/authenticated server health **1.18.35** were checked before implementation.
 The issue was reread with `gh issue view 38 --repo tbrandenburg/agentilogue --json body,comments,title`;
 it returned zero comments.
 
 Research before implementation:
 
-- [OpenCode SDK](https://opencode.ai/docs/sdk/) and
+- [opencode SDK](https://opencode.ai/docs/sdk/) and
   [assistant-ui quickstart](https://www.assistant-ui.com/docs/runtimes/opencode/quickstart.md).
 - Context7 `/anomalyco/opencode`, query covering provider/agent catalogs, prompt pairs,
   previous-model/default semantics. Current docs include v2/dev APIs; those were
@@ -59,7 +59,7 @@ git diff --check
 ss -ltn '( sport = :14381 or sport = :14382 )'
 ```
 
-The proof requires installed Playwright and Chrome (`channel: "chrome"`), OpenCode
+The proof requires installed Playwright and Chrome (`channel: "chrome"`), opencode
 1.18.35, and free ports 14381/14382. It creates disposable HOME/XDG/project roots
 under `/tmp/opencode`, sets a random in-memory Basic-auth password, launches owned
 services with `setsid`, and uses a private direct Playwright browser/context. Only

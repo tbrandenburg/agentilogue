@@ -186,7 +186,7 @@ interface MessageTiming {
 }
 ```
 
-Timing is tracked automatically for the Data Stream runtime, `useChatRuntime` (AI SDK), and the LangGraph, AG-UI, and OpenCode runtimes. For `useLocalRuntime` and `useExternalStoreRuntime`, supply it manually.
+Timing is tracked automatically for the Data Stream runtime, `useChatRuntime` (AI SDK), and the LangGraph, AG-UI, and opencode runtimes. For `useLocalRuntime` and `useExternalStoreRuntime`, supply it manually.
 
 ## Supplying timing manually
 

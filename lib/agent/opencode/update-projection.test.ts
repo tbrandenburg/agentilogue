@@ -4,7 +4,7 @@ import type { SessionUpdate } from "@agentclientprotocol/sdk";
 import type { AgentRunEvent, RunMessage, RunPart, RunTool } from "../contracts/run";
 import { projectOpenCodeUpdate } from "./update-projection";
 
-describe("OpenCode ACP update projection", () => {
+describe("opencode ACP update projection", () => {
   it("appends chunks by stable message ID", () => {
     const state = {
       fallbackMessageId: "fallback-message",

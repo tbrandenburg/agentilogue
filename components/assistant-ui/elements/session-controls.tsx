@@ -18,6 +18,7 @@ import {
   type ModelOption,
 } from "@/components/assistant-ui/elements/model-selector";
 import { CommandItem } from "@/components/ui/command";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { nativeModelId } from "@/lib/native-selection";
 import type { NativeCatalog, NativeSelection } from "@/lib/native-selection";
 
@@ -50,6 +51,7 @@ function Picker({
   label,
   value,
   disabled,
+  hint,
   children,
   formatValue,
   onValueChange,
@@ -57,6 +59,7 @@ function Picker({
   label: string;
   value: string;
   disabled?: boolean;
+  hint?: string;
   children: ReactNode;
   formatValue: (value: string) => string;
   onValueChange?: (value: string) => void;
@@ -67,12 +70,29 @@ function Picker({
       onValueChange={(next) => onValueChange?.(next ?? "")}
       disabled={disabled}
     >
-      <Select.Trigger className={buttonClass} aria-label={label}>
-        <span className="truncate">
-          {label} · <Select.Value>{(selected) => formatValue(String(selected ?? ""))}</Select.Value>
-        </span>
-        <ChevronDownIcon className="size-3 shrink-0" />
-      </Select.Trigger>
+      <TooltipProvider delay={400}>
+        <Tooltip>
+          <TooltipTrigger
+            disabled={!hint}
+            render={
+              <span
+                className="inline-flex min-w-0"
+                tabIndex={disabled && hint ? 0 : undefined}
+                aria-label={disabled && hint ? `${label} details` : undefined}
+              />
+            }
+          >
+            <Select.Trigger className={buttonClass} aria-label={label}>
+              <span className="truncate">
+                {label} ·{" "}
+                <Select.Value>{(selected) => formatValue(String(selected ?? ""))}</Select.Value>
+              </span>
+              <ChevronDownIcon className="size-3 shrink-0" />
+            </Select.Trigger>
+          </TooltipTrigger>
+          {hint && <TooltipContent>{hint}</TooltipContent>}
+        </Tooltip>
+      </TooltipProvider>
       <Select.Portal>
         <Select.Positioner className="z-50 outline-none" sideOffset={6}>
           <Select.Popup className={popupClass}>
@@ -120,6 +140,11 @@ export function SessionControls({
   const isNative = config.runTarget === "opencode:native";
   const nativeLocked = hasMessages || Boolean(config.nativeSessionId);
   const nativeEnabled = Boolean(nativeCatalog) && !nativeLocked && !isRunning && !isSubmitting;
+  const nativeHint =
+    nativeSelectionReason ??
+    (!nativeCatalog
+      ? "Loading opencode models and agents…"
+      : "Default delegates to opencode: the agent’s model, otherwise the session/server model. Choices lock after the first message; start a new session to reset them.");
   const tierModels = Object.entries(models.openai.tiers).filter(
     (entry): entry is [string, string] => typeof entry[1] === "string",
   );
@@ -151,6 +176,11 @@ export function SessionControls({
         label="Run with"
         value={config.runTarget ?? "none"}
         disabled={hasMessages || (isNative && nativeLocked)}
+        hint={
+          hasOpenCodeNative === false && nativeOpenCodeReason
+            ? `opencode · Native unavailable: ${nativeOpenCodeReason}`
+            : undefined
+        }
         formatValue={(value) =>
           value === "none"
             ? "None"
@@ -184,15 +214,11 @@ export function SessionControls({
           </Option>
         ))}
       </Picker>
-      {hasOpenCodeNative === false && nativeOpenCodeReason && (
-        <span className="basis-full px-1.5 text-xs text-muted-foreground">
-          OpenCode · Native unavailable: {nativeOpenCodeReason}
-        </span>
-      )}
       {isNative ? (
         <>
           <Picker
             label="Agent"
+            hint={nativeHint}
             value={config.nativeAgent ?? ""}
             disabled={!nativeEnabled}
             formatValue={(value) => value || "Default"}
@@ -207,6 +233,7 @@ export function SessionControls({
           </Picker>
           <Picker
             label="Model"
+            hint={nativeHint}
             value={config.nativeModel ? nativeModelId(config.nativeModel) : ""}
             disabled={!nativeEnabled}
             formatValue={() =>
@@ -227,12 +254,6 @@ export function SessionControls({
               </Option>
             ))}
           </Picker>
-          <span role="status" className="basis-full px-1.5 text-xs text-muted-foreground">
-            {nativeSelectionReason ??
-              (!nativeCatalog
-                ? "Loading OpenCode models and agents…"
-                : "Default delegates to OpenCode: the agent’s model, otherwise the session/server model. Choices lock after the first message; start a new session to reset them.")}
-          </span>
         </>
       ) : (
         <>

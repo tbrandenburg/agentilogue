@@ -50,7 +50,7 @@ const toolPermissionFixture = JSON.parse(
   readonly processExit: { readonly code: number | null; readonly signal: string | null };
 };
 
-describe("OpenCode ACP v1 update projection", () => {
+describe("opencode ACP v1 update projection", () => {
   it("records native tool updates, offered permission choices, and the approved file result", () => {
     assert.deepEqual(
       toolPermissionFixture.updates.map(toAcpProofUpdate),

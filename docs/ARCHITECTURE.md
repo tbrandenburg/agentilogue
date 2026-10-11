@@ -35,12 +35,12 @@ flowchart TB
     SDK --> CHAT["/api/chat → AI SDK → OpenAI"]
     ROOT --> ACP["useExternalStoreRuntime · implemented"]
     ACP --> API["/api/agent · admitted runs / observation / controls"]
-    API --> PORT["AgentProvider → OpenCode ACP"]
+    API --> PORT["AgentProvider → opencode ACP"]
     ROOT --> NATIVE["useOpenCodeRuntime · experimental opt-in"]
-    NATIVE --> UPSTREAM["OpenCode SDK/server, Pi SDK, etc."]
+    NATIVE --> UPSTREAM["opencode SDK/server, Pi SDK, etc."]
 ```
 
-AI SDK and OpenCode ACP are implemented. Native OpenCode is an **off-by-default, experimental trusted-local opt-in for local use**, using the maintained adapter directly against an authenticated loopback OpenCode server. Adapter `0.2.30` generated and restored official runtime titles without the former title-request workaround. Final-build approval-receipt UI checks passed. Short-outage recovery passed, but a longer outage stalled same-mount requests; reload/password re-entry recovered safely without prompt resend, and the exact cause remains unproven. The [issue #34 boundary report](spikes/2026-10-opencode-local-boundary-issue-34.md) keeps the initial 18 PASS/1 FAIL/3 NOT TESTED matrix separate from the 6 PASS/1 FAIL follow-up and tracks production-hardening gaps. The ACP browser adapter uses app-owned start/control requests and independently reconnectable observation encoded with maintained `assistant-stream` primitives; `AssistantTransport` is not a mandatory backend command queue.
+AI SDK and opencode ACP are implemented. Native opencode is an **off-by-default, experimental trusted-local opt-in for local use**, using the maintained adapter directly against an authenticated loopback opencode server. Adapter `0.2.30` generated and restored official runtime titles without the former title-request workaround. Final-build approval-receipt UI checks passed. Short-outage recovery passed, but a longer outage stalled same-mount requests; reload/password re-entry recovered safely without prompt resend, and the exact cause remains unproven. The [issue #34 boundary report](spikes/2026-10-opencode-local-boundary-issue-34.md) keeps the initial 18 PASS/1 FAIL/3 NOT TESTED matrix separate from the 6 PASS/1 FAIL follow-up and tracks production-hardening gaps. The ACP browser adapter uses app-owned start/control requests and independently reconnectable observation encoded with maintained `assistant-stream` primitives; `AssistantTransport` is not a mandatory backend command queue.
 
 Our `Thread` and its assistant-ui runtime interface remain stable even when the native transport, runtime hook and server API differ.
 
@@ -48,7 +48,7 @@ Our `Thread` and its assistant-ui runtime interface remain stable even when the 
 
 Where a maintained upstream runtime fits, use its public adapter without converting native messages back through our provider-neutral run model. Examples include assistant-ui's `useOpenCodeRuntime`, `usePiRuntime`, `useAgUiRuntime` and `useA2ARuntime`. Upstream integrations may use `useExternalStoreRuntime` internally; that is their implementation detail, not a requirement to add our own `AgentProvider`.
 
-Use [ADR 0001](decisions/0001-agent-integration-lanes.md) to choose a lane. A native adapter must still meet AGENTILOGUE's deployment-specific project/session ownership, authentication, cancellation, permission and recovery requirements. The [OpenCode spike](spikes/2026-10-opencode-integration-comparison.md) found that direct SDK/server access could enumerate sessions outside the disposable project. #33 remains **NO-GO for strict project isolation**; the native experiment instead places one trusted local user's projects/sessions in a shared trust scope without a filesystem sandbox. #34 tracks production hardening; the native lane is **not approved for production**.
+Use [ADR 0001](decisions/0001-agent-integration-lanes.md) to choose a lane. A native adapter must still meet AGENTILOGUE's deployment-specific project/session ownership, authentication, cancellation, permission and recovery requirements. The [opencode spike](spikes/2026-10-opencode-integration-comparison.md) found that direct SDK/server access could enumerate sessions outside the disposable project. #33 remains **NO-GO for strict project isolation**; the native experiment instead places one trusted local user's projects/sessions in a shared trust scope without a filesystem sandbox. #34 tracks production hardening; the native lane is **not approved for production**.
 
 ## Backend boundary
 
@@ -60,7 +60,7 @@ Do not add a generic `AgentService`, `AgentRegistry` or parallel event represent
 
 ## Target agent integrations
 
-Likely future agent targets include Pi, Codex, Claude Code and GitHub Copilot, in addition to OpenCode. Select each concrete integration using [ADR 0001](decisions/0001-agent-integration-lanes.md): first assess maintained assistant-ui adapters, then the agent's suitable native SDK/protocol and required security boundary. ACP is one option, **not** the default interface every agent must support.
+Likely future agent targets include Pi, Codex, Claude Code and GitHub Copilot, in addition to opencode. Select each concrete integration using [ADR 0001](decisions/0001-agent-integration-lanes.md): first assess maintained assistant-ui adapters, then the agent's suitable native SDK/protocol and required security boundary. ACP is one option, **not** the default interface every agent must support.
 
 Do not force a native SDK or a protocol adapter into `AgentProvider` merely to share a TypeScript port. If two backends genuinely need the same run/admission/observation/control interface, reuse the existing port; if an upstream runtime provides a better direct integration, keep it native.
 
@@ -76,7 +76,7 @@ One chat session talks to one configured agent at a time. That lets the initial 
 
 ### First provider
 
-For the existing OpenCode ACP lane, the route resolves the provider directly:
+For the existing opencode ACP lane, the route resolves the provider directly:
 
 ```mermaid
 flowchart LR
@@ -123,11 +123,11 @@ Agent runtimes/providers and tool protocols are different concerns. MCP and simi
 
 Construct one configured backend provider directly. Add a small factory only if another implementation uses the same backend port; do not add a universal runtime registry just because different assistant-ui adapters exist.
 
-## First proof: OpenCode ACP
+## First proof: opencode ACP
 
-The initial deep OpenCode proof is implemented through the official ACP SDK and AGENTILOGUE's provider-neutral lane. It exercises streaming, native tool updates, permissions, cancellation, session identity and truthful unknown outcomes. See [the provider contracts](CONTRACTS.md) for its precise invariants.
+The initial deep opencode proof is implemented through the official ACP SDK and AGENTILOGUE's provider-neutral lane. It exercises streaming, native tool updates, permissions, cancellation, session identity and truthful unknown outcomes. See [the provider contracts](CONTRACTS.md) for its precise invariants.
 
-The subsequent [issue #29 comparison](spikes/2026-10-opencode-integration-comparison.md) demonstrated assistant-ui's native OpenCode adapter with significantly less app-owned code but identified a cross-project session-list boundary and version mismatch. ACP remains supported alongside the experimental native opt-in. ADR 0001 scopes the latter to one trusted local user rather than equivalent per-project isolation; native lifecycle and compatibility claims still require evidence under #34.
+The subsequent [issue #29 comparison](spikes/2026-10-opencode-integration-comparison.md) demonstrated assistant-ui's native opencode adapter with significantly less app-owned code but identified a cross-project session-list boundary and version mismatch. ACP remains supported alongside the experimental native opt-in. ADR 0001 scopes the latter to one trusted local user rather than equivalent per-project isolation; native lifecycle and compatibility claims still require evidence under #34.
 
 ## References and inspiration
 
@@ -147,7 +147,7 @@ Study how framework-specific state, tool calls, approvals, attachments, and acti
 
 ### opencode
 
-[opencode](https://github.com/anomalyco/opencode) is the first implemented native-agent integration and the subject of the [OpenCode native-versus-ACP spike](spikes/2026-10-opencode-integration-comparison.md). ACP is supported; the upstream OpenCode SDK/server runtime is an experimental trusted-local opt-in, not a production lane.
+[opencode](https://github.com/anomalyco/opencode) is the first implemented native-agent integration and the subject of the [opencode native-versus-ACP spike](spikes/2026-10-opencode-integration-comparison.md). ACP is supported; the upstream opencode SDK/server runtime is an experimental trusted-local opt-in, not a production lane.
 
 ### Archon
 

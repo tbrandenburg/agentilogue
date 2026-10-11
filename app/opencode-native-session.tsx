@@ -65,7 +65,7 @@ export function OpenCodeNativeSessionRuntime(props: Props) {
   if (!availability.enabled) {
     return (
       <p className="p-4 text-sm text-muted-foreground">
-        OpenCode · Native unavailable: {availability.reason}.
+        opencode · Native unavailable: {availability.reason}.
       </p>
     );
   }
@@ -73,7 +73,7 @@ export function OpenCodeNativeSessionRuntime(props: Props) {
   if (!originMatches) {
     return (
       <p role="status" className="p-4 text-sm text-muted-foreground">
-        OpenCode · Native unavailable: waiting for the configured app origin to be confirmed.
+        opencode · Native unavailable: waiting for the configured app origin to be confirmed.
       </p>
     );
   }
@@ -94,14 +94,14 @@ export function OpenCodeNativeSessionRuntime(props: Props) {
               });
             } catch {
               // SDK transport failures are not proof that Basic auth is enabled.
-              throw new Error("Could not verify OpenCode Basic auth");
+              throw new Error("Could not verify opencode Basic auth");
             }
             if (!unauthenticatedResult?.response) {
-              throw new Error("Could not verify OpenCode Basic auth");
+              throw new Error("Could not verify opencode Basic auth");
             }
             if (unauthenticatedResult.response.status !== 401) {
               throw new Error(
-                "OpenCode Basic auth is not enabled (unauthenticated health did not return 401)",
+                "opencode Basic auth is not enabled (unauthenticated health did not return 401)",
               );
             }
             const authenticated = createAuthenticatedClient(availability.baseUrl, password);
@@ -109,10 +109,10 @@ export function OpenCodeNativeSessionRuntime(props: Props) {
               signal: AbortSignal.timeout(5_000),
             });
             if (!authenticatedResult?.response) {
-              throw new Error("Could not connect to OpenCode");
+              throw new Error("Could not connect to opencode");
             }
             if (authenticatedResult.response.status !== 200 || authenticatedResult.error) {
-              throw new Error("OpenCode rejected the password; check the server password");
+              throw new Error("opencode rejected the password; check the server password");
             }
             setConnectedPassword(password);
             setPassword("");
@@ -120,13 +120,13 @@ export function OpenCodeNativeSessionRuntime(props: Props) {
             setError(
               connectError instanceof Error
                 ? connectError.message
-                : "Could not connect to OpenCode",
+                : "Could not connect to opencode",
             );
           }
         }}
       >
         <label className="text-sm font-medium" htmlFor={`opencode-password-${props.session.id}`}>
-          OpenCode server password
+          opencode server password
         </label>
         <input
           id={`opencode-password-${props.session.id}`}
@@ -149,7 +149,7 @@ export function OpenCodeNativeSessionRuntime(props: Props) {
           type="submit"
           className="self-start rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground"
         >
-          Connect to OpenCode
+          Connect to opencode
         </button>
         <button
           type="button"
@@ -219,7 +219,7 @@ function ConnectedOpenCodeSession({
       .catch(() => {
         if (!controller.signal.aborted)
           setCatalogError(
-            "OpenCode catalog discovery failed. Default chat remains available; explicit choices require a verified catalog. Reconnect to retry discovery.",
+            "opencode catalog discovery failed. Default chat remains available; explicit choices require a verified catalog. Reconnect to retry discovery.",
           );
       });
     return () => controller.abort();
@@ -301,7 +301,7 @@ const NativeGuardContext = createContext<ReturnType<typeof createOpenCodeRunGuar
 
 function useGuardContext() {
   const guard = useContext(NativeGuardContext);
-  if (!guard) throw new Error("OpenCode native run guard is unavailable");
+  if (!guard) throw new Error("opencode native run guard is unavailable");
   return guard;
 }
 

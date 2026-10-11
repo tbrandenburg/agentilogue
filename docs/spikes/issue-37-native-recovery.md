@@ -4,7 +4,7 @@
 
 The recovery UX is verified: a failed status/history recheck displays exactly:
 
-> Connection could not recover. Reload this page and reconnect by entering the OpenCode server password to restore this session.
+> Connection could not recover. Reload this page and reconnect by entering the opencode server password to restore this session.
 
 The existing **Outcome unknown** and **Retrying the prompt can repeat side effects** warning remain visible during recovery, including after Acknowledge. A successful status/history check clears recovery guidance; incomplete history still means unknown. Requests retain their five-second timeout and latest-check ownership. No transcript mutation, automatic reload, prompt resend, password persistence, transport replacement, or adapter fork was added.
 
@@ -14,14 +14,14 @@ The bounded investigation reproduced the same-mount stall. Reload/password re-en
 
 Re-read `gh issue view 37 --repo tbrandenburg/agentilogue --json body,comments,title`; comments were empty, including after the interruption. Read project/global instructions, runtime/development/detach skills, and the [prior evidence](/docs/spikes/2026-10-opencode-local-boundary-issue-34.md).
 
-- [Official OpenCode server documentation](https://opencode.ai/docs/server/): loopback serve, explicit CORS, Basic auth, status/history endpoints and SSE.
+- [Official opencode server documentation](https://opencode.ai/docs/server/): loopback serve, explicit CORS, Basic auth, status/history endpoints and SSE.
 - [Official assistant-ui quickstart](https://www.assistant-ui.com/docs/runtimes/opencode/quickstart.md): stable authenticated client, SSE runtime, `initialSessionId` restoration.
 - Context7 `/anomalyco/opencode`: request signals and event subscription cancellation. Returned examples included newer/dev APIs; these were orientation, not proof about the pinned v1 implementation.
 - Installed adapter `src/OpenCodeEventSource.ts:168-229`: adapter calls SDK subscription with `sseMaxRetryAttempts: 1`, emits reconnect before consuming the stream, and uses bounded backoff. Reconnect notifications can trigger reattachment, but source inspection alone does not establish why browser requests stall. No demonstrated upstream lifecycle adjustment justified changing the transport.
 
 ## Reproduction
 
-From this issue worktree, with the frozen root dependency installation symlinked as `node_modules`, installed Playwright discoverable in the workspace, system Chrome, OpenCode `1.18.35`, and an existing `OPENAI_API_KEY` environment variable:
+From this issue worktree, with the frozen root dependency installation symlinked as `node_modules`, installed Playwright discoverable in the workspace, system Chrome, opencode `1.18.35`, and an existing `OPENAI_API_KEY` environment variable:
 
 ```sh
 node tests/e2e/native-recovery.mjs

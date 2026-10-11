@@ -138,7 +138,7 @@ By framework, when one already fits:
 | A2A v1.0 agent server | `useA2ARuntime` | `@assistant-ui/react-a2a` | [a2a.md](./references/a2a.md) |
 | AG-UI agent server | `useAgUiRuntime` | `@assistant-ui/react-ag-ui` | [ag-ui.md](./references/ag-ui.md) |
 | Eve (`eve/next`) | `useEveAgentRuntime` | `@assistant-ui/eve` | [eve.md](./references/eve.md) |
-| OpenCode server (experimental) | `useOpenCodeRuntime` | `@assistant-ui/react-opencode` | [opencode.md](./references/opencode.md) |
+| opencode server (experimental) | `useOpenCodeRuntime` | `@assistant-ui/react-opencode` | [opencode.md](./references/opencode.md) |
 | Claude Managed Agents session | `useExternalStoreRuntime` + `useRemoteThreadListRuntime` | `@assistant-ui/react` (no dedicated adapter) | [claude-managed-agents.md](./references/claude-managed-agents.md) |
 
 By need, when no framework adapter fits (full decision tree in [custom-backend.md](./references/custom-backend.md)):

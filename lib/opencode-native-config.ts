@@ -41,7 +41,7 @@ export function getOpenCodeNativeAvailability(
   }
   const serverAddress = environment.url;
   if (!serverAddress || !isLocalHttpUrl(serverAddress)) {
-    return { enabled: false, reason: "Configure a loopback OpenCode server URL" };
+    return { enabled: false, reason: "Configure a loopback opencode server URL" };
   }
   const appOrigin = environment.appOrigin;
   if (!appOrigin || !isLocalHttpUrl(appOrigin)) {

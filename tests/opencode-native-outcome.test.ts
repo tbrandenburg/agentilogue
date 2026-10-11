@@ -13,7 +13,7 @@ const interrupted = {
   time: { created: 1, completed: undefined },
 } as unknown as Pick<AssistantMessage, "finish" | "time">;
 
-describe("native OpenCode outcome evidence", () => {
+describe("native opencode outcome evidence", () => {
   it("does not treat null finish and absent completion as terminal", () => {
     assert.equal(hasOpenCodeTerminalEvidence(interrupted), false);
   });

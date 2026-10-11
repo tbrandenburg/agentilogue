@@ -95,10 +95,12 @@ async function pick(label: string, name: string) {
   await page.getByRole("option", { name, exact: true }).click();
 }
 async function connect() {
-  await panel().getByLabel("OpenCode server password", { exact: true }).fill(password);
-  await panel().getByRole("button", { name: "Connect to OpenCode", exact: true }).click();
+  await panel().getByLabel("opencode server password", { exact: true }).fill(password);
+  await panel().getByRole("button", { name: "Connect to opencode", exact: true }).click();
   try {
-    await panel().getByText("Default delegates to OpenCode:", { exact: false }).waitFor();
+    await expect(panel().getByRole("combobox", { name: "Model", exact: true })).toBeEnabled({
+      timeout: 30000,
+    });
   } catch (error) {
     console.log(await panel().innerText());
     throw error;
@@ -196,7 +198,7 @@ try {
     } catch {
       return false;
     }
-  }, "OpenCode startup");
+  }, "opencode startup");
   assert.equal((await client.global.health()).data?.version, "1.18.35");
   await client.provider.list({}, { throwOnError: true });
   await client.app.agents({}, { throwOnError: true });
@@ -219,7 +221,7 @@ try {
   await send("Reply exactly BACKGROUND_ACP_38, no tools.");
   await panel().getByText("BACKGROUND_ACP_38", { exact: true }).waitFor({ timeout: 120_000 });
   await page.getByRole("button", { name: "New session", exact: true }).click();
-  await pick("Run with", "OpenCode · Native");
+  await pick("Run with", "opencode · Native");
   await connect();
   await pick("Model", "openai/gpt-4.1");
   await pick("Agent", "plan");
@@ -242,7 +244,7 @@ try {
     true,
   );
   await page.getByRole("button", { name: "New session", exact: true }).click();
-  await pick("Run with", "OpenCode · Native");
+  await pick("Run with", "opencode · Native");
   await connect();
   await pick("Model", "openai/gpt-4.1");
   await pick("Agent", "plan");
@@ -366,18 +368,28 @@ try {
     await page.route(blocked, (route) => route.abort("failed"));
     await page.reload();
     await page.getByRole("tab", { name: "chat 4", exact: true }).click();
-    await panel().getByLabel("OpenCode server password", { exact: true }).fill(password);
-    await panel().getByRole("button", { name: "Connect to OpenCode", exact: true }).click();
-    await panel().getByText("OpenCode catalog discovery failed.", { exact: false }).waitFor();
+    await panel().getByLabel("opencode server password", { exact: true }).fill(password);
+    await panel().getByRole("button", { name: "Connect to opencode", exact: true }).click();
+    await panel().getByLabel("Model details", { exact: true }).hover();
+    await page
+      .getByRole("tooltip")
+      .filter({ hasText: "opencode catalog discovery failed." })
+      .waitFor();
+    await page.mouse.move(1100, 80);
     await expect(panel().getByRole("textbox", { name: "Message input" })).toBeDisabled();
     for (const label of ["Model", "Agent"]) {
       await expect(panel().getByRole("combobox", { name: label, exact: true })).toBeDisabled();
     }
     const prompts = requests.filter((request) => request.path.endsWith("/prompt_async")).length;
     await page.getByRole("tab", { name: "chat 3", exact: true }).click();
-    await panel().getByLabel("OpenCode server password", { exact: true }).fill(password);
-    await panel().getByRole("button", { name: "Connect to OpenCode", exact: true }).click();
-    await panel().getByText("OpenCode catalog discovery failed.", { exact: false }).waitFor();
+    await panel().getByLabel("opencode server password", { exact: true }).fill(password);
+    await panel().getByRole("button", { name: "Connect to opencode", exact: true }).click();
+    await panel().getByLabel("Model details", { exact: true }).hover();
+    await page
+      .getByRole("tooltip")
+      .filter({ hasText: "opencode catalog discovery failed." })
+      .waitFor();
+    await page.mouse.move(1100, 80);
     for (const label of ["Model", "Agent"]) {
       await expect(panel().getByRole("combobox", { name: label, exact: true })).toBeDisabled();
     }

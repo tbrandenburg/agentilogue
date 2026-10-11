@@ -9,7 +9,7 @@ The exact package baseline is `@assistant-ui/react@0.15.25`,
 `@assistant-ui/ai-sdk@0.0.11`, `@assistant-ui/react-markdown@0.14.19`, and
 `@assistant-ui/next@0.0.24`.
 
-The experimental native OpenCode lane separately pins
+The experimental native opencode lane separately pins
 `@assistant-ui/react-opencode@0.2.30` and `@opencode-ai/sdk@1.18.35`.
 Root overrides pin `@assistant-ui/core@0.3.26`, `@assistant-ui/store@0.3.19`,
 and `@assistant-ui/tap@0.9.22`; `assistant-stream` is pinned and overridden

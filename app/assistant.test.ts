@@ -17,7 +17,7 @@ import {
 import { projectOpenCodeUpdate } from "@/lib/agent/opencode/update-projection";
 import { applyAgentObservation, assistantMessageFromSnapshot } from "./opencode-projection";
 
-describe("OpenCode assistant-ui projection", () => {
+describe("opencode assistant-ui projection", () => {
   it("reconstructs interleaved text/tool segments in event order with unique UI part IDs", () => {
     let snapshot = RunSnapshotSchema.parse({
       runId: RunIdSchema.parse("00000000-0000-4000-8000-000000000031"),
@@ -188,7 +188,7 @@ describe("OpenCode assistant-ui projection", () => {
     if (typeof message.content === "string") throw new Error("Expected structured assistant parts");
     const tool = message.content[0];
     assert.equal(tool?.type, "tool-call");
-    if (tool?.type !== "tool-call") throw new Error("Expected OpenCode tool call");
+    if (tool?.type !== "tool-call") throw new Error("Expected opencode tool call");
     assert.deepEqual(
       tool.approval?.options?.map((option) => [option.id, option.label]),
       [

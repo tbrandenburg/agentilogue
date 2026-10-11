@@ -89,7 +89,7 @@ function resolveProofPath(cwd: string, path: string): string {
   return target;
 }
 
-/** Runs one ACP v1 session against an explicitly selected OpenCode executable. */
+/** Runs one ACP v1 session against an explicitly selected opencode executable. */
 export async function runOpenCodeAcpProof(options: OpenCodeAcpProofOptions): Promise<void> {
   if (!options.cwd.startsWith("/")) throw new Error("ACP cwd must be absolute");
   const child = spawn(options.executable ?? "opencode", ["acp"], {
@@ -98,7 +98,7 @@ export async function runOpenCodeAcpProof(options: OpenCodeAcpProofOptions): Pro
   });
   const input = child.stdout;
   const output = child.stdin;
-  if (!input || !output) throw new Error("Failed to open OpenCode ACP stdio");
+  if (!input || !output) throw new Error("Failed to open opencode ACP stdio");
   const childExit = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(
     (resolveExit) => {
       child.once("close", (code, signal) => {
@@ -191,13 +191,13 @@ export async function runOpenCodeAcpProof(options: OpenCodeAcpProofOptions): Pro
 
         const operation = options.sessionOperation ?? { kind: "new" as const };
         if (operation.kind === "load" && !initialized.agentCapabilities?.loadSession) {
-          throw new Error("OpenCode ACP did not advertise session/load support");
+          throw new Error("opencode ACP did not advertise session/load support");
         }
         if (
           operation.kind === "resume" &&
           !initialized.agentCapabilities?.sessionCapabilities?.resume
         ) {
-          throw new Error("OpenCode ACP did not advertise session/resume support");
+          throw new Error("opencode ACP did not advertise session/resume support");
         }
         let configOptions: readonly string[] = [];
         if (operation.kind === "new") {
@@ -224,7 +224,7 @@ export async function runOpenCodeAcpProof(options: OpenCodeAcpProofOptions): Pro
           liveSessionId = operation.sessionId;
           configOptions = (session.configOptions ?? []).map((option) => option.id);
         }
-        if (!liveSessionId) throw new Error("OpenCode ACP session did not provide an ID");
+        if (!liveSessionId) throw new Error("opencode ACP session did not provide an ID");
         const sessionId = liveSessionId;
         options.onEvent({
           type: "session",

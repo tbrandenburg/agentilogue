@@ -183,13 +183,13 @@ export function OpenCodeSessionRuntime({
       let runId: string | undefined;
       try {
         if (unsupportedInput || !text.trim())
-          throw new Error("OpenCode currently supports text prompts only.");
+          throw new Error("opencode currently supports text prompts only.");
         const start = await fetch("/api/agent", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ conversationId: session.id, input: [{ type: "text", text }] }),
         });
-        if (!start.ok) throw new Error("OpenCode could not admit this run.");
+        if (!start.ok) throw new Error("opencode could not admit this run.");
         runId = StartAgentRunReceiptSchema.parse(await start.json()).runId;
         activeRunId.current = runId;
         const permissions = new Map<string, PermissionRecord>();
@@ -202,7 +202,7 @@ export function OpenCodeSessionRuntime({
         const failure =
           error instanceof Error && error.message.includes("text prompts")
             ? error.message
-            : "OpenCode could not complete this run. Its final status may be unknown.";
+            : "opencode could not complete this run. Its final status may be unknown.";
         const partial =
           projection.current?.messageId === assistantId
             ? assistantMessageFromSnapshot(
@@ -262,7 +262,7 @@ export function OpenCodeSessionRuntime({
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ kind: "cancel", runId, conversationId: session.id }),
     });
-    if (!response.ok) throw new Error("OpenCode could not dispatch cancellation.");
+    if (!response.ok) throw new Error("opencode could not dispatch cancellation.");
   }, [session.id]);
 
   const onRespondToToolApproval = useCallback(
@@ -271,9 +271,9 @@ export function OpenCodeSessionRuntime({
       const current = projection.current;
       const permission = current?.permissions.get(approvalId);
       if (!runId || !current || !permission || !optionId)
-        throw new Error("This OpenCode permission is no longer available.");
+        throw new Error("This opencode permission is no longer available.");
       if (!permission.request.options.some((option) => option.id === optionId))
-        throw new Error("OpenCode did not offer that permission choice.");
+        throw new Error("opencode did not offer that permission choice.");
       current.permissions.set(approvalId, {
         ...permission,
         dispatchedResponse: { approved, optionId },
@@ -290,7 +290,7 @@ export function OpenCodeSessionRuntime({
             decision: { permissionId: approvalId, optionId },
           }),
         });
-        if (!result.ok) throw new Error("OpenCode could not dispatch this permission choice.");
+        if (!result.ok) throw new Error("opencode could not dispatch this permission choice.");
       } catch (error) {
         current.permissions.set(approvalId, { ...permission });
         publishProjection(current);
@@ -315,7 +315,7 @@ export function OpenCodeSessionRuntime({
       <RunningStateReporter onRunningChange={reportRunning} />
       {isReconnecting ? (
         <p role="status" className="px-4 py-1 text-xs text-amber-700 dark:text-amber-300">
-          OpenCode observation disconnected; reconnecting. The run remains active and can still be
+          opencode observation disconnected; reconnecting. The run remains active and can still be
           stopped.
         </p>
       ) : null}
@@ -325,7 +325,7 @@ export function OpenCodeSessionRuntime({
           className="flex items-center gap-2 px-4 py-1 text-xs text-amber-700 dark:text-amber-300"
         >
           <span>
-            OpenCode observation disconnected. The run remains active and can still be stopped.
+            opencode observation disconnected. The run remains active and can still be stopped.
           </span>
           <button type="button" className="underline" onClick={onRetry}>
             Retry

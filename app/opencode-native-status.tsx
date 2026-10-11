@@ -132,7 +132,7 @@ function NativeOpenCodeStatusReady({
     <>
       {recoveryRequired ? (
         <p role="status" className="px-4 py-2 text-xs text-amber-700 dark:text-amber-300">
-          Connection could not recover. Reload this page and reconnect by entering the OpenCode
+          Connection could not recover. Reload this page and reconnect by entering the opencode
           server password to restore this session.
         </p>
       ) : null}
@@ -155,7 +155,7 @@ function NativeOpenCodeStatusReady({
       ) : null}
       {serverReportsBusy ? (
         <p role="status" className="px-4 py-2 text-xs text-muted-foreground">
-          OpenCode event stream is quiet; server reports run active. Rechecking every 5 seconds.
+          opencode event stream is quiet; server reports run active. Rechecking every 5 seconds.
         </p>
       ) : null}
     </>

@@ -10,7 +10,7 @@ export async function readOpenCodeRecoveryOutcome(
   const status = await client.session.status({}, { signal: AbortSignal.timeout(timeout) });
   if (!current()) return;
   if (status.error || status.response.status !== 200) {
-    throw new Error("OpenCode status recheck failed");
+    throw new Error("opencode status recheck failed");
   }
   if (classifyOpenCodeOutcome(status.data?.[sessionId]?.type, false) === "active") return "active";
   const history = await client.session.messages(
@@ -19,7 +19,7 @@ export async function readOpenCodeRecoveryOutcome(
   );
   if (!current()) return;
   if (history.error || history.response.status !== 200) {
-    throw new Error("OpenCode history recheck failed");
+    throw new Error("opencode history recheck failed");
   }
   return classifyOpenCodeHistoryOutcome(history.data ?? []);
 }

@@ -16,7 +16,7 @@ Four building blocks cover any backend with no dedicated adapter; all four are b
 | `useAssistantTransportRuntime` | `ExternalStoreRuntime` + protocol | Backend streams full agent-state snapshots | Rich internal agent state, or bidirectional commands |
 
 ```text
-have an AI SDK / LangGraph / Google ADK / A2A / AG-UI / Eve / OpenCode backend?
+have an AI SDK / LangGraph / Google ADK / A2A / AG-UI / Eve / opencode backend?
   yes -> use that adapter instead (see SKILL.md's pick-a-runtime table)
   no  -> already have message state in redux / zustand / tanstack-query?
            yes -> ExternalStoreRuntime

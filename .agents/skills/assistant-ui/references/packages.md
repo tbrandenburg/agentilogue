@@ -27,7 +27,7 @@ Check the current version with `npm view <package> version`. Every published pac
 | `@assistant-ui/react-a2a` | `useA2ARuntime` | Agent-to-Agent protocol, tasks and artifacts |
 | `@assistant-ui/react-ag-ui` | `useAgUiRuntime` | AG-UI protocol, shared state, interrupts, subagent lifecycle, A2UI actions |
 | `@assistant-ui/eve` | `useEveAgentRuntime` | Eve agents; the `eve` CLI template |
-| `@assistant-ui/react-opencode` | `useOpenCodeRuntime` | OpenCode sessions, permissions, questions |
+| `@assistant-ui/react-opencode` | `useOpenCodeRuntime` | opencode sessions, permissions, questions |
 | `@assistant-ui/react-pi` | `usePiRuntime` | Pi coding agent sessions |
 | `@assistant-ui/react-data-stream` | `useDataStreamRuntime` | AI SDK v4 data stream protocol (legacy) |
 | `@assistant-ui/cloud-ai-sdk` | Deprecated | Use the `cloud` option of `useChatRuntime` or `AISDKThreads({ cloud })`; see [Migrate from Cloud AI SDK](https://www.assistant-ui.com/docs/cloud/migrate-cloud-ai-sdk) |

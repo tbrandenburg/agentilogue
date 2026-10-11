@@ -33,11 +33,11 @@ export function applyAgentObservation(
       (snapshot.runId !== observation.snapshot.runId ||
         observation.snapshot.lastSequence < snapshot.lastSequence)
     )
-      throw new Error("OpenCode observer snapshot does not continue the active run");
+      throw new Error("opencode observer snapshot does not continue the active run");
     return observation.snapshot;
   }
   if (!snapshot || observation.sequence !== snapshot.lastSequence + 1)
-    throw new Error("OpenCode observation sequence is not contiguous");
+    throw new Error("opencode observation sequence is not contiguous");
 
   const event = AgentRunEventSchema.parse(observation.event);
   const base = { ...snapshot, lastSequence: observation.sequence };
@@ -154,7 +154,7 @@ export function assistantMessageFromSnapshot(
     return {
       type: "tool-call",
       toolCallId: part.toolCallId,
-      toolName: tool?.title ?? approval?.request.title ?? "OpenCode tool",
+      toolName: tool?.title ?? approval?.request.title ?? "opencode tool",
       args: {},
       argsText: "",
       ...(tool?.summary !== undefined
@@ -162,7 +162,7 @@ export function assistantMessageFromSnapshot(
         : tool?.status === "completed"
           ? { result: "" }
           : tool?.status === "failed"
-            ? { result: "OpenCode tool failed" }
+            ? { result: "opencode tool failed" }
             : {}),
       ...(tool?.status === "running" || tool?.status === "pending" ? { isPreliminary: true } : {}),
       ...(tool?.status === "failed" ? { isError: true } : {}),
@@ -190,25 +190,25 @@ export function assistantMessageFromSnapshot(
     content.push({
       type: "text",
       id: "run-outcome",
-      text: `OpenCode run ${outcome.kind}: ${outcome.message}`,
+      text: `opencode run ${outcome.kind}: ${outcome.message}`,
     });
   else if (outcome?.kind === "stopped")
     content.push({
       type: "text",
       id: "run-outcome",
-      text: `OpenCode stopped the run (${outcome.reason}).`,
+      text: `opencode stopped the run (${outcome.reason}).`,
     });
   else if (outcome?.kind === "cancelled")
     content.push({
       type: "text",
       id: "run-outcome",
-      text: "OpenCode confirmed this run was cancelled.",
+      text: "opencode confirmed this run was cancelled.",
     });
   else if (outcome && snapshot.messages.length === 0)
     content.push({
       type: "text",
       id: "run-outcome",
-      text: "OpenCode completed without a text response.",
+      text: "opencode completed without a text response.",
     });
   const status: ThreadMessageLike["status"] =
     snapshot.phase === "running"

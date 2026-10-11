@@ -4,7 +4,7 @@ import { createOpenCodeRunGuard } from "../lib/opencode-native-run-guard";
 
 const base = "http://127.0.0.1:4096";
 
-describe("native OpenCode permission cancellation guard", () => {
+describe("native opencode permission cancellation guard", () => {
   it("forwards abort and notifies before propagating a storage failure", async () => {
     const failure = new Error("storage unavailable");
     const forwarded: string[] = [];

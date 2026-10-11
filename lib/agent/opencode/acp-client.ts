@@ -28,7 +28,7 @@ export async function runOpenCodeAcpPrompt(
   const output = child.stdin;
   if (!input || !output) {
     child.kill("SIGTERM");
-    throw new Error("OpenCode ACP stdio unavailable");
+    throw new Error("opencode ACP stdio unavailable");
   }
   let childExited = false;
   const exit = new Promise<void>((resolveExit) => {
@@ -61,7 +61,7 @@ export async function runOpenCodeAcpPrompt(
           clientInfo: { name: "agentilogue", version: "0.1.0" },
         });
         if (config.providerSessionId && !initialized.agentCapabilities?.loadSession)
-          throw new Error("OpenCode ACP does not support loading this conversation");
+          throw new Error("opencode ACP does not support loading this conversation");
         let sessionId: string;
         if (config.providerSessionId) {
           await context.request(acp.methods.agent.session.load, {
@@ -92,7 +92,7 @@ export async function runOpenCodeAcpPrompt(
     return await Promise.race([
       connection,
       exit.then(() => {
-        throw new Error("OpenCode ACP process exited before prompt completion");
+        throw new Error("opencode ACP process exited before prompt completion");
       }),
     ]);
   } finally {

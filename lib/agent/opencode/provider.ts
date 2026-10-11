@@ -74,11 +74,11 @@ const COMPLETED_RUN_RETENTION_MS = 30 * 60 * 1000;
 
 function errorMessage(error: unknown): string {
   return error instanceof acp.RequestError
-    ? "OpenCode ACP request failed"
-    : "OpenCode ACP connection ended without a terminal result";
+    ? "opencode ACP request failed"
+    : "opencode ACP connection ended without a terminal result";
 }
 
-/** Single configured local OpenCode ACP provider; no browser-controlled process settings. */
+/** Single configured local opencode ACP provider; no browser-controlled process settings. */
 export class OpenCodeProvider implements AgentProvider {
   readonly id = "opencode-acp";
   private readonly runs = new Map<RunId, Run>();
@@ -126,12 +126,12 @@ export class OpenCodeProvider implements AgentProvider {
     if (!RunIdSchema.safeParse(request.runId).success || this.runs.has(request.runId))
       throw new Error("Run ID is invalid or already exists");
     if (request.model !== undefined || request.agent !== undefined)
-      throw new Error("OpenCode model and agent overrides are disabled");
+      throw new Error("opencode model and agent overrides are disabled");
     if (request.input.length !== 1 || request.input[0]?.type !== "text")
-      throw new Error("OpenCode ACP currently accepts one text input");
+      throw new Error("opencode ACP currently accepts one text input");
     AgentInputSchema.array().min(1).max(32).parse(request.input);
     if (this.activeConversations.has(request.conversationId))
-      throw new Error("This conversation already has an active or unknown OpenCode run");
+      throw new Error("This conversation already has an active or unknown opencode run");
     const providerSessionId = this.conversationSessions.get(request.conversationId);
     const ownedRequest: StartRunRequest = {
       runId: request.runId,
@@ -353,7 +353,7 @@ export class OpenCodeProvider implements AgentProvider {
     const permission = PermissionRequestSchema.parse({
       id,
       toolCallId: params.toolCall.toolCallId,
-      title: params.toolCall.title || "OpenCode permission",
+      title: params.toolCall.title || "opencode permission",
       options: params.options.map((option) => ({
         id: option.optionId,
         label: option.name,

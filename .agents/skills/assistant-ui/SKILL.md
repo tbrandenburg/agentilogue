@@ -1,6 +1,6 @@
 ---
 name: assistant-ui
-description: "Overview and router for assistant-ui, the React library for building AI chat interfaces from composable primitives and a styled elements catalog. Use for high-level, cross-cutting, or architecture questions: choosing packages, picking a runtime, or understanding the layers (elements, primitives, the aui client with AuiConfig and AuiProvider, the runtime, adapters) and the message model. Covers `@assistant-ui/react` 0.15.x, `@assistant-ui/ai-sdk` for AI SDK v7 (`useChatRuntime`), `@assistant-ui/core`, `@assistant-ui/store`, `assistant-stream`, `assistant-cloud`, the LangGraph, LangChain, Google ADK, A2A, AG-UI, Eve, OpenCode, and Pi adapters, the `@assistant-ui/react-native` and `@assistant-ui/react-ink` bindings, and the `useAui`, `useAuiState`, and `useAuiEvent` hooks. For a specific area route to a focused sibling instead: setup, elements, primitives, runtime, tools, generative-ui, streaming, cloud, thread-list, copilots, markdown, react-mcp, observability, react-native, ink, or update."
+description: "Overview and router for assistant-ui, the React library for building AI chat interfaces from composable primitives and a styled elements catalog. Use for high-level, cross-cutting, or architecture questions: choosing packages, picking a runtime, or understanding the layers (elements, primitives, the aui client with AuiConfig and AuiProvider, the runtime, adapters) and the message model. Covers `@assistant-ui/react` 0.15.x, `@assistant-ui/ai-sdk` for AI SDK v7 (`useChatRuntime`), `@assistant-ui/core`, `@assistant-ui/store`, `assistant-stream`, `assistant-cloud`, the LangGraph, LangChain, Google ADK, A2A, AG-UI, Eve, opencode, and Pi adapters, the `@assistant-ui/react-native` and `@assistant-ui/react-ink` bindings, and the `useAui`, `useAuiState`, and `useAuiEvent` hooks. For a specific area route to a focused sibling instead: setup, elements, primitives, runtime, tools, generative-ui, streaming, cloud, thread-list, copilots, markdown, react-mcp, observability, react-native, ink, or update."
 license: MIT
 ---
 
@@ -21,7 +21,7 @@ React library for AI chat interfaces: unstyled primitives, a styled elements cat
 |----------|-----------|
 | Chat UI in an afternoon | `npx assistant-ui@latest create`, then the `thread` element |
 | Full control over markup | Primitives (`ThreadPrimitive`, `ComposerPrimitive`, `MessagePrimitive`) |
-| Existing AI backend | A runtime adapter (AI SDK, LangGraph, LangChain, ADK, A2A, AG-UI, Eve, OpenCode) or `useLocalRuntime` |
+| Existing AI backend | A runtime adapter (AI SDK, LangGraph, LangChain, ADK, A2A, AG-UI, Eve, opencode) or `useLocalRuntime` |
 | Tools with UI | `"use generative"` toolkits, tool UI, generative UI |
 | Multi-thread apps | Thread list elements plus Assistant Cloud or your own adapter |
 | Copilots in an app | Instructions, context, visible components, interactables |
@@ -48,7 +48,7 @@ React library for AI chat interfaces: unstyled primitives, a styled elements cat
                             │
 ┌───────────────────────────▼──────────────────────────────────┐
 │  Adapters and backends: AI SDK · LangGraph · LangChain · ADK │
-│  A2A · AG-UI · Eve · OpenCode · custom · Assistant Cloud     │
+│  A2A · AG-UI · Eve · opencode · custom · Assistant Cloud     │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -64,7 +64,7 @@ Vercel AI SDK?
    ├─ A2A protocol → useA2ARuntime (@assistant-ui/react-a2a)
    ├─ AG-UI protocol → useAgUiRuntime (@assistant-ui/react-ag-ui)
    ├─ Eve agents → useEveAgentRuntime (@assistant-ui/eve)
-   ├─ OpenCode → useOpenCodeRuntime (@assistant-ui/react-opencode)
+   ├─ opencode → useOpenCodeRuntime (@assistant-ui/react-opencode)
    ├─ Claude Managed Agents → useExternalStoreRuntime + useRemoteThreadListRuntime
    ├─ State already in Redux/Zustand/your store → useExternalStoreRuntime
    ├─ Custom endpoint speaking Assistant Transport → useAssistantTransportRuntime

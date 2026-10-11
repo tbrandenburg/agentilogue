@@ -10,6 +10,8 @@ The project starts from the assistant-ui minimal template. The existing AI SDK +
 
 - Keep changes small and understandable.
 - Keep the UI intentionally minimal: an excellent conversation surface, composer, and only the agent details users actually need.
+- Keep composer guidance opt-in: use tooltips on the relevant controls for hints, limitations, and availability explanations. Never add hint/warning rows below the prompt field; keep the conversation UI clean and free of confusing explanatory text.
+- Spell the product name `opencode` in lowercase in UI text, documentation, and comments.
 - Do not grow the product for bells and whistles. Every new surface, mode, setting, and abstraction must earn its place.
 - Follow KISS and YAGNI. Prefer the smallest design that solves a demonstrated requirement.
 - Maximize reuse of existing libraries, especially assistant-ui and the libraries already in the repository. Configure, compose, or adapt before writing replacements.
@@ -52,7 +54,7 @@ Keep this path working.
 Every chat lane provides assistant-ui's `AssistantRuntime` to the existing `Thread`. Existing integrations:
 
 - **AI SDK:** `useChatRuntime → /api/chat → AI SDK`.
-- **OpenCode ACP:** `useExternalStoreRuntime → /api/agent → AgentProvider → OpenCode ACP`.
+- **opencode ACP:** `useExternalStoreRuntime → /api/agent → AgentProvider → opencode ACP`.
 
 For a new agent, **evaluate a maintained assistant-ui runtime first**. Use it directly if installed versions, project/session isolation, native controls, lifecycle correctness and capabilities are validated. Otherwise choose an appropriate native SDK/protocol with the smallest necessary server boundary.
 

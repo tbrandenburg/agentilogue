@@ -26,7 +26,7 @@ export async function observeOpenCodeRun(
         signal: controller.signal,
       });
       if (response.status === 403 || response.status === 404) throw new PermanentObserverError();
-      if (!response.ok || !response.body) throw new Error("OpenCode observer is unavailable.");
+      if (!response.ok || !response.body) throw new Error("opencode observer is unavailable.");
       onConnectionState("connected");
       const reader = response.body
         .pipeThrough(new AssistantTransportDecoder({ strict: true }))
@@ -36,12 +36,12 @@ export async function observeOpenCodeRun(
         while (true) {
           const { value, done } = await reader.read();
           if (done) break;
-          if (value.type === "error") throw new Error("OpenCode observer reported an error.");
+          if (value.type === "error") throw new Error("opencode observer reported an error.");
           if (value.type !== "update-state") continue;
           for (const operation of value.operations) {
             if (operation.type !== "set" || operation.path.length !== 0) continue;
             const observation = RunObservationSchema.safeParse(operation.value);
-            if (!observation.success) throw new Error("OpenCode sent an invalid observation.");
+            if (!observation.success) throw new Error("opencode sent an invalid observation.");
             onObservation(observation.data);
             if (
               observation.data.type === "snapshot"
@@ -55,7 +55,7 @@ export async function observeOpenCodeRun(
         reader.releaseLock();
       }
       if (finished) return;
-      throw new Error("OpenCode observer ended before a terminal result.");
+      throw new Error("opencode observer ended before a terminal result.");
     } catch (error) {
       controller.abort();
       if (error instanceof PermanentObserverError || attempt >= MAX_RETRIES) {

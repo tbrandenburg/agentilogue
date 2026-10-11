@@ -36,7 +36,7 @@ export function createOpenCodeRunGuard(
         !Array.isArray(state.invalidated) ||
         !state.invalidated.every((id: unknown) => typeof id === "string")
       )
-        throw new Error("Invalid OpenCode cancellation state");
+        throw new Error("Invalid opencode cancellation state");
       cancelled = state.cancelled;
       for (const id of state.invalidated) invalidated.add(id);
     }
@@ -88,7 +88,7 @@ export function createOpenCodeRunGuard(
       const { pathname } = new URL(request.url);
       const reply = request.method === "POST" ? PERMISSION_REPLY_PATH.exec(pathname) : null;
       if (reply && (cancelled || invalidated.has(decodeURIComponent(reply[1]!)))) {
-        throw new Error("This OpenCode permission was cancelled and is no longer available.");
+        throw new Error("This opencode permission was cancelled and is no longer available.");
       }
       (request as Request & { timeout?: boolean }).timeout = false;
       if (request.method === "POST" && SESSION_ABORT_PATH.test(pathname)) {
@@ -102,7 +102,7 @@ export function createOpenCodeRunGuard(
             } catch (abortError) {
               throw new AggregateError(
                 [storageError, abortError],
-                "OpenCode cancellation persistence and abort both failed",
+                "opencode cancellation persistence and abort both failed",
               );
             }
             throw storageError;
@@ -121,9 +121,9 @@ export function createOpenCodeRunGuard(
               signal: AbortSignal.timeout(5_000),
             }),
           );
-          if (!response.ok) throw new Error("Could not reconcile cancelled OpenCode permissions");
+          if (!response.ok) throw new Error("Could not reconcile cancelled opencode permissions");
           const entries: unknown = await response.json();
-          if (!Array.isArray(entries)) throw new Error("Invalid OpenCode permission response");
+          if (!Array.isArray(entries)) throw new Error("Invalid opencode permission response");
           for (const entry of entries) {
             if (
               typeof entry !== "object" ||
@@ -133,13 +133,13 @@ export function createOpenCodeRunGuard(
               !("id" in entry) ||
               typeof entry.id !== "string"
             ) {
-              throw new Error("Invalid OpenCode permission response");
+              throw new Error("Invalid opencode permission response");
             }
             if (entry.sessionID === decodeURIComponent(prompt[1]!)) invalidated.add(entry.id);
           }
           if (revision !== cancellation) {
             persist();
-            throw new Error("OpenCode prompt was cancelled during permission reconciliation");
+            throw new Error("opencode prompt was cancelled during permission reconciliation");
           }
           persist(false);
           cancelled = false;
