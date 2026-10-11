@@ -5,6 +5,125 @@ import { createOpenCodeRunGuard } from "../lib/opencode-native-run-guard";
 const base = "http://127.0.0.1:4096";
 
 describe("native OpenCode permission cancellation guard", () => {
+  it("forwards abort and notifies before propagating a storage failure", async () => {
+    const failure = new Error("storage unavailable");
+    const forwarded: string[] = [];
+    const guard = createOpenCodeRunGuard(
+      async (input) => {
+        forwarded.push(new URL(new Request(input).url).pathname);
+        return Response.json(true);
+      },
+      {
+        load: () => null,
+        save: () => {
+          throw failure;
+        },
+      },
+    );
+    guard.trackPending(["old"]);
+    let notified = false;
+    guard.subscribe(() => {
+      notified = true;
+    });
+    const abort = guard.fetch(`${base}/session/session-a/abort`, { method: "POST" });
+    assert.equal(notified, true);
+    assert.equal(guard.getSnapshot(), 1);
+    assert.equal(guard.isInvalidated("delayed"), true);
+    await assert.rejects(abort, (error) => error === failure);
+    assert.deepEqual(forwarded, ["/session/session-a/abort"]);
+    assert.throws(() => guard.fetch(`${base}/permission/old/reply`, { method: "POST" }));
+  });
+
+  it("preserves both errors when cancellation storage and abort transport fail", async () => {
+    const storageError = new Error("storage unavailable");
+    const abortError = new Error("abort transport failed");
+    let forwarded = false;
+    const guard = createOpenCodeRunGuard(
+      async () => {
+        forwarded = true;
+        throw abortError;
+      },
+      {
+        load: () => null,
+        save: () => {
+          throw storageError;
+        },
+      },
+    );
+    await assert.rejects(
+      guard.fetch(`${base}/session/session-a/abort`, { method: "POST" }),
+      (error) => {
+        assert.ok(error instanceof AggregateError);
+        assert.deepEqual(error.errors, [storageError, abortError]);
+        return true;
+      },
+    );
+    assert.equal(forwarded, true);
+    assert.equal(guard.isInvalidated("delayed"), true);
+  });
+
+  it("keeps Stop effective during reconciliation even when persisting Stop fails", async () => {
+    const failure = new Error("storage unavailable");
+    let fail = false;
+    let release: (response: Response) => void = () => {};
+    const deferred = new Promise<Response>((resolve) => {
+      release = resolve;
+    });
+    const paths: string[] = [];
+    const guard = createOpenCodeRunGuard(
+      async (input) => {
+        const path = new URL(new Request(input).url).pathname;
+        paths.push(path);
+        return path === "/permission" ? deferred : Response.json(true);
+      },
+      {
+        load: () => null,
+        save: () => {
+          if (fail) throw failure;
+        },
+      },
+    );
+    guard.invalidatePending();
+    const prompt = guard.fetch(`${base}/session/session-a/prompt_async`, { method: "POST" });
+    fail = true;
+    await assert.rejects(
+      guard.fetch(`${base}/session/session-a/abort`, { method: "POST" }),
+      (error) => error === failure,
+    );
+    fail = false;
+    release(Response.json([]));
+    await assert.rejects(prompt, /cancelled during permission reconciliation/);
+    assert.equal(guard.isInvalidated("delayed"), true);
+    assert.deepEqual(paths, ["/permission", "/session/session-a/abort"]);
+  });
+
+  it("does not release the latch when storing reconciled admission fails", async () => {
+    const failure = new Error("storage unavailable");
+    let fail = false;
+    const paths: string[] = [];
+    const guard = createOpenCodeRunGuard(
+      async (input) => {
+        paths.push(new URL(new Request(input).url).pathname);
+        return Response.json([]);
+      },
+      {
+        load: () => null,
+        save: () => {
+          if (fail) throw failure;
+        },
+      },
+    );
+    guard.invalidatePending();
+    fail = true;
+    await assert.rejects(
+      guard.fetch(`${base}/session/session-a/prompt_async`, { method: "POST" }),
+      (error) => error === failure,
+    );
+    assert.equal(guard.isInvalidated("delayed"), true);
+    assert.throws(() => guard.fetch(`${base}/permission/delayed/reply`, { method: "POST" }));
+    assert.deepEqual(paths, ["/permission"]);
+  });
+
   it("does not release cancellation if Stop occurs during stale-permission reconciliation", async () => {
     let release: (response: Response) => void = () => {};
     const deferred = new Promise<Response>((resolve) => {

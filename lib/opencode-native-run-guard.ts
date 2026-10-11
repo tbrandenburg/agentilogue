@@ -42,8 +42,8 @@ export function createOpenCodeRunGuard(
     }
   }
 
-  const persist = () => {
-    const state: GuardState = { cancelled, invalidated: [...invalidated] };
+  const persist = (cancellation = cancelled) => {
+    const state: GuardState = { cancelled: cancellation, invalidated: [...invalidated] };
     storage?.save(JSON.stringify(state));
   };
 
@@ -55,8 +55,8 @@ export function createOpenCodeRunGuard(
     cancelled = true;
     for (const id of pending) invalidated.add(id);
     pending.clear();
-    persist();
     notify();
+    persist();
   };
 
   return {
@@ -71,8 +71,8 @@ export function createOpenCodeRunGuard(
         if (!invalidated.has(id)) pending.add(id);
       }
       if (changed) {
-        persist();
         notify();
+        persist();
       }
     },
     invalidatePending: invalidate,
@@ -90,11 +90,25 @@ export function createOpenCodeRunGuard(
       if (reply && (cancelled || invalidated.has(decodeURIComponent(reply[1]!)))) {
         throw new Error("This OpenCode permission was cancelled and is no longer available.");
       }
+      (request as Request & { timeout?: boolean }).timeout = false;
       if (request.method === "POST" && SESSION_ABORT_PATH.test(pathname)) {
         // Latch cancellation before forwarding, even if React has not committed the approval.
-        invalidate();
+        try {
+          invalidate();
+        } catch (storageError) {
+          return (async () => {
+            try {
+              await delegate(request);
+            } catch (abortError) {
+              throw new AggregateError(
+                [storageError, abortError],
+                "OpenCode cancellation persistence and abort both failed",
+              );
+            }
+            throw storageError;
+          })();
+        }
       }
-      (request as Request & { timeout?: boolean }).timeout = false;
       const prompt = request.method === "POST" ? SESSION_PROMPT_PATH.exec(pathname) : null;
       if (prompt && cancelled) {
         const cancellation = revision;
@@ -127,8 +141,8 @@ export function createOpenCodeRunGuard(
             persist();
             throw new Error("OpenCode prompt was cancelled during permission reconciliation");
           }
+          persist(false);
           cancelled = false;
-          persist();
           notify();
           return delegate(request);
         })();

@@ -19,7 +19,6 @@ import { ToolFallback as ThreadDefaultToolFallback } from "@/components/assistan
 import { SessionControlsProvider } from "@/components/assistant-ui/elements/session-controls-slot";
 import type { OpenCodeNativeAvailability } from "@/lib/opencode-native-config";
 import { isOpenCodeNativeOriginAllowed } from "@/lib/opencode-native-config";
-import { withOpenCodeTitleWorkaround } from "@/lib/opencode-native-title-workaround";
 import { createOpenCodeRunGuard } from "@/lib/opencode-native-run-guard";
 import type { RunTargetId } from "@/lib/run-target";
 import { AGENT_THREAD_COMPONENTS } from "./opencode-session";
@@ -137,8 +136,7 @@ export function OpenCodeNativeSessionRuntime(props: Props) {
           className="rounded-md border bg-background px-3 py-2 text-sm"
         />
         <p className="text-xs text-muted-foreground">
-          Held in memory for this tab only. A temporary workaround skips the adapter's invalid title
-          request; OpenCode may supply a title after the first prompt.
+          Held in memory for this tab only. Re-enter after reloading to restore your native session.
         </p>
         {error && (
           <p role="alert" className="text-sm text-destructive">
@@ -182,7 +180,7 @@ function createAuthenticatedClient(
   return createOpencodeClient({
     baseUrl,
     headers: { Authorization: `Basic ${btoa(binary)}` },
-    fetch: withOpenCodeTitleWorkaround(fetcher),
+    fetch: fetcher,
   });
 }
 
@@ -256,7 +254,12 @@ function NativeToolFallback(props: ToolCallMessagePartProps) {
   const guard = useGuardContext();
   useSyncExternalStore(guard.subscribe, guard.getSnapshot, guard.getSnapshot);
   const { isInvalidated } = guard;
-  if (props.approval?.id && isInvalidated(props.approval.id))
+  if (
+    props.approval?.id &&
+    props.approval.approved === undefined &&
+    props.approval.resolution === undefined &&
+    isInvalidated(props.approval.id)
+  )
     return (
       <p className="text-xs text-muted-foreground">Cancelled — approval no longer available</p>
     );

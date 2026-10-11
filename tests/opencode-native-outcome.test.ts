@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { AssistantMessage } from "@opencode-ai/sdk/v2/client";
+import type { AssistantMessage, ToolPart } from "@opencode-ai/sdk/v2/client";
 import {
   classifyOpenCodeHistoryOutcome,
   classifyOpenCodeOutcome,
@@ -18,11 +18,75 @@ describe("native OpenCode outcome evidence", () => {
     assert.equal(hasOpenCodeTerminalEvidence(interrupted), false);
   });
 
-  it("recognizes a non-empty finish reason or numeric completion timestamp", () => {
+  it("recognizes a final finish reason or a completed explicit error", () => {
     assert.equal(hasOpenCodeTerminalEvidence({ ...interrupted, finish: "stop" }), true);
     assert.equal(
-      hasOpenCodeTerminalEvidence({ ...interrupted, time: { created: 1, completed: 2 } }),
+      hasOpenCodeTerminalEvidence({
+        ...interrupted,
+        error: { name: "MessageAbortedError", data: { message: "Aborted" } },
+        time: { created: 1, completed: 2 },
+      }),
       true,
+    );
+  });
+
+  it("does not mistake completed intermediate messages for final run evidence", () => {
+    for (const finish of ["tool-calls", "unknown", "", undefined]) {
+      const info = {
+        role: "assistant" as const,
+        finish,
+        time: { created: 1, completed: 2 },
+      };
+      assert.equal(hasOpenCodeTerminalEvidence(info), false);
+      assert.equal(
+        classifyOpenCodeHistoryOutcome([{ info: { role: "user" } }, { info }]),
+        "unknown",
+      );
+    }
+  });
+
+  it("keeps a stop with tool calls unknown until a final assistant response follows", () => {
+    const prompt = { info: { role: "user" as const } };
+    const tool = {
+      type: "tool",
+      state: { status: "completed", metadata: {} },
+    } as ToolPart;
+    const step = {
+      info: { role: "assistant" as const, finish: "stop", time: { created: 1, completed: 2 } },
+      parts: [tool],
+    };
+    assert.equal(classifyOpenCodeHistoryOutcome([prompt, step]), "unknown");
+    assert.equal(
+      classifyOpenCodeHistoryOutcome([prompt, step, { info: step.info, parts: [] }]),
+      "terminal",
+    );
+    assert.equal(
+      classifyOpenCodeHistoryOutcome([
+        prompt,
+        { ...step, parts: [{ ...tool, metadata: { providerExecuted: true } }] },
+      ]),
+      "terminal",
+    );
+    assert.equal(
+      classifyOpenCodeHistoryOutcome([
+        prompt,
+        {
+          ...step,
+          parts: [
+            {
+              ...tool,
+              state: {
+                status: "error",
+                input: {},
+                error: "Interrupted",
+                time: { start: 1, end: 2 },
+                metadata: { interrupted: true },
+              },
+            },
+          ],
+        },
+      ]),
+      "terminal",
     );
   });
 

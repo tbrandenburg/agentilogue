@@ -1,12 +1,92 @@
 # Issue #34: OpenCode local-browser boundary and adapter compatibility
 
-**Status:** The maintainer-approved local E2E opt-in is enabled by environment configuration, with a temporary scoped SDK-fetch workaround for assistant-ui #9244. This is testing-only, not production readiness. Native chat, context, tools, permissions, questions, cancellation, SSE recovery, native reload recovery, mixed-runtime background execution, and AI SDK/ACP smoke flows were exercised. B15's concurrent stale-reply race passed in the native browser path. B18's unknown-outcome warning now appears after a full reload and password re-entry, persists after explicit status recheck, and does not resend the prompt. The local assistant-ui tool presentation can remain unresolved after recovery. #34 remains open for the remaining unsupported/unverified cases. Basic auth is required, the local user enters its password in memory, and configured app-origin matching is defense-in-depth rather than authorization.
+**Status:** Fresh production-build browser evidence on adapter `0.2.30` has **18 PASS, 1 FAIL, and 3 NOT TESTED checks (22 enumerated rows)**. **FAIL:** same-mount recovery after OpenCode restart stalled until reload; root cause remains unproven. Full-page reload/password re-entry recovered the same session safely, retained unknown outcome, and sent no duplicate prompt. Generated server titles matched official thread metadata/list-item titles and restored without the removed workaround. This is an off-by-default experimental trusted-local integration, not production readiness or seamless recovery. #34 remains production hardening; #33 remains **NO-GO for strict project isolation**. Older `0.2.29` evidence below remains historical. Basic auth is required; app-origin matching is defense-in-depth rather than authorization.
+
+## Current PR #36 baseline and final browser evidence
+
+| Component                      | Current pin | Previous baseline |
+| ------------------------------ | ----------- | ----------------- |
+| `@assistant-ui/react-opencode` | `0.2.30`    | `0.2.29`          |
+| `@assistant-ui/core` override  | `0.3.26`    | `0.3.25`          |
+| `@assistant-ui/store` override | `0.3.19`    | `0.3.18`          |
+| `assistant-stream`             | `0.3.49`    | `0.3.48`          |
+| `@assistant-ui/tap` override   | `0.9.22`    | unchanged         |
+| `@opencode-ai/sdk`             | `1.18.35`   | unchanged         |
+
+Adapter `0.2.30` resolves title bug [#9244](https://github.com/assistant-ui/assistant-ui/issues/9244) through upstream [PR #9245](https://github.com/assistant-ui/assistant-ui/pull/9245), merged as [5438d56](https://github.com/assistant-ui/assistant-ui/commit/5438d56bd524532d95a080c9a7fd37ef2042a607). The app removed `lib/opencode-native-title-workaround.ts` and its dedicated tests; the authenticated SDK client uses the native run guard without title-request suppression. The original `0.2.29` bodyless summarize 400 and workaround-only B21 result remain historical observations, separate from the upgraded browser evidence.
+
+Fresh `0.2.30` evidence below verifies title generation and propagation through official runtime metadata/list items, not visible custom-tab title labels. The app intentionally keeps chat labels on its custom tabs. `assistant-stream` is pinned and overridden to a single shared `0.3.49` version.
+
+The current lifecycle fixes reject intermediate `tool-calls` and `unknown` finishes, timestamp-only completion claims, and tool steps still requiring a follow-up model call. A completed error record can establish a terminal outcome; terminal does not imply success. Rechecks queued at the completion boundary are not dropped. Stop latches cancellation and notifies subscribers before attempting storage writes; if persistence fails, the guard still forwards abort and propagates the storage error, or both errors if abort also fails. Releasing the latch for a new prompt requires successful persistence. These are implementation changes; fresh browser evidence and coordinator validation must be recorded separately.
+
+### Initial production-build browser evidence
+
+Production Next.js `16.3.8` build ID `_v5Ie23KkgCrTzqJv30Af`; installed dependency versions match the current table, including the shared-stream override. CLI and authenticated health both reported OpenCode `1.18.35`. Enabled app, gate-off app, and OpenCode used loopback ports `45236`, `45237`, and `45238`; configured app origin was `http://127.0.0.1:45236`. A fresh disposable project/profile separated HOME/config/data/state/cache. Real models were `openai/gpt-4.1` and title model `openai/gpt-4.1-mini`; credentials were inherited without being read or printed. No mocks, fabricated responses, or adapter fork were used.
+
+| #   | Check                                                 | Result     |
+| --- | ----------------------------------------------------- | ---------- |
+| 1   | Gate off                                              | PASS       |
+| 2   | Auth + loopback                                       | PASS       |
+| 3   | Exact app origin                                      | PASS       |
+| 4   | Two native app tabs                                   | PASS       |
+| 5   | Multiturn                                             | PASS       |
+| 6   | Generated title + official metadata                   | PASS       |
+| 7   | Title and session reopen                              | PASS       |
+| 8   | Text/tool/text                                        | PASS       |
+| 9   | Allow/deny                                            | PASS       |
+| 10  | B15 Stop + captured late callback                     | PASS       |
+| 11  | B15 reconnect/reload                                  | PASS       |
+| 12  | B15 new approval                                      | PASS       |
+| 13  | B18 server loss + partial transcript + no resend      | PASS       |
+| 14  | B18 restart + reload/recheck                          | PASS       |
+| 15  | Same-mount recovery/recheck without reload            | FAIL       |
+| 16  | No password persistence                               | PASS       |
+| 17  | AI SDK real smoke                                     | PASS       |
+| 18  | ACP real smoke                                        | PASS       |
+| 19  | Narrow viewport                                       | PASS       |
+| 20  | Separate remote host                                  | NOT TESTED |
+| 21  | Deferred React commit ordering                        | NOT TESTED |
+| 22  | Storage failures / completion-boundary scheduler race | NOT TESTED |
+
+The totals count these 22 rows, not expanded subchecks or the historical B1–B23 matrix.
+
+- **Titles:** Server, `thread.metadata.title`, and official `threads.threadItems` titles agreed (`ORBIT_C_ONE_36 token confirmation` and `Token NEBULA_C_TWO_36 confirmation`). Zero `POST /summarize` requests and zero native HTTP 400 responses were observed. Reload/password re-entry restored the original session, transcript, and matching titles. The coordinator inspected this evidence.
+- **B15:** Stop followed by invoking the captured real Allow callback left permission-reply count at 2 and the target file absent. Reconnect and reload exposed no Allow controls; a new prompt reconciled permissions, accepted a fresh approval (reply count 2 → 3), and wrote only the fresh target. This is the app-client boundary, not a server-side revocation guarantee.
+- **B18 safe recovery:** Server termination during an approved `sleep 90` tool retained partial transcript and unknown warning; `prompt_async` count stayed 10. Restart with the same profile, full-page reload, password re-entry, and explicit Recheck returned status `{}`, assistant `finish: null` and completion `null`, retained unknown, and kept prompt count at 10. The interrupted tool remained unresolved despite `thread.isRunning=false`; no terminal success is claimed.
+- **Same-mount FAIL:** After restart, raw unauthenticated health returned 401, but the existing page's direct fetch timed out at five seconds and explicit Recheck could not obtain healthy history. Reload restored HTTP 200 status/history. The root cause is unproven; reload/password re-entry is the proven recovery path. The failure is not reclassified as a seamless-reconnect pass.
+- **Other checks:** Gate-off produced zero native requests and zero console/page errors. Wrong password failed; correct auth yielded health 401 then 200. An unconfigured loopback alias made zero native requests. Two sessions kept independent markers/context. Real read/allow/deny and AI SDK/ACP prompts passed; denied-file absence was verified, and missing post-denial completion surfaced unknown. Password inputs reset after reload and storage contained no password. At 390×844, native and ACP viewport/document/body widths were 390. Deliberate auth/process-loss console resource errors were expected.
+
+The initial run included the shared-stream override and preceded the final approval-receipt/password-helper UI fixes. Test-owned services and browser were stopped, with empty listener/process checks.
+
+### Final-build UI and bounded recovery follow-up
+
+Build `n2l1GdZdCWQw-vH_Cy0h1` reused the retained disposable project/profile with OpenCode `1.18.35` and the same loopback app/server origins. This was not a fresh-profile test. The follow-up has **6 PASS and 1 FAIL across 7 rows**, separate from the initial 18/1/3 matrix.
+
+| #   | Check                             | Result |
+| --- | --------------------------------- | ------ |
+| 1   | Password helper                   | PASS   |
+| 2   | Password re-entry / restore       | PASS   |
+| 3   | Settled Allow after Stop          | PASS   |
+| 4   | Settled Deny after Stop           | PASS   |
+| 5   | Pending B15 / late callback       | PASS   |
+| 6   | Short-outage same-mount recovery  | PASS   |
+| 7   | Longer-outage same-mount recovery | FAIL   |
+
+The rebuilt password helper no longer mentioned the workaround. Reload left password fields blank, persisted no password, and restored session mappings. After Stop, completed writes still showed `Allowed · once` and successful file output; rejected writes still showed `Denied · reject` and the rejection. Only the pending approval showed Cancelled. Invoking its captured Allow callback left reply count **2 → 2**, and its target file remained absent.
+
+With two mounted native runtimes over HTTP/1.1, a roughly two-second outage recovered same-mount event/status/history requests with HTTP 200 and no prompt resend. A longer outage of at least 15 seconds reproduced the stall: **12 outstanding reattach requests** lacked responses, primary-origin browser health timed out at **5001ms**, while `localhost` health returned **HTTP 200 in 16ms** and alias status/session calls completed in 195/210ms. Raw primary-origin health returned 401. Six Chrome primary-origin connections plus a working alias connection support a **per-origin transport/reconnect stall**, but the exact browser/SDK/server mechanism and causal role of those connections remain unproven; this is not a confirmed socket-exhaustion diagnosis.
+
+Reload/password re-entry restored primary health/status in 192ms combined, retained unknown after explicit Recheck, and preserved session mappings. Prompt count stayed **5 → 5** through both outages, probes, and reload. This verifies safe recovery, not seamless reconnection. Owned services/browser were stopped and test-port listeners were absent.
+
+### Repository gates and remaining limits
+
+Repository gates passed: `bun install --frozen-lockfile`, `bun run format`, `bun run lint`, `bun run typecheck`, `bun test` (**100 passed, 0 failed; 17 files**), `bun run build`, `bun run models:check`, and `git diff --check`. Deterministic storage-failure and completion-boundary tests are separate from browser evidence. Remote-host access and deferred-commit/storage/scheduler browser injections remain NOT TESTED. Native model/agent controls stay disabled; tab-local persistence, unresolved recovered tools, and direct-server late replies remain limits. The longer-outage stall is #34 production-hardening work for the off-by-default experimental local-use lane, not evidence of unsafe prompt resend or a strict-isolation pass.
 
 ## Decision context
 
 Read the full updated [#34](https://github.com/tbrandenburg/agentilogue/issues/34), [#33](https://github.com/tbrandenburg/agentilogue/issues/33), and [#35](https://github.com/tbrandenburg/agentilogue/pull/35) bodies/comments, plus [ADR 0001](../decisions/0001-agent-integration-lanes.md) and the earlier [comparison report](2026-10-opencode-integration-comparison.md). The issues returned no comments. The decision in #34 is a **one-user trusted-local** scope: configured projects/sessions are within the user's trust scope. #33's profile probe remains **NO-GO for project isolation**; it was not edited or rerun here and is not a failure of this revised scope.
 
-## Versions and compatibility
+## Historical 0.2.29 versions and compatibility
 
 | Component                      | Version/evidence                                                                                                                             |
 | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -108,7 +188,7 @@ This reproduced the earlier summarize 400 without a prompt, model, provider cred
 | Successful title generation using provider/model                                | **NOT TESTED**                         | No provider credentials or model request used                                                                      |
 | Project isolation                                                               | **NOT TESTED HERE; #33 remains NO-GO** | Explicitly not required by the one-user trusted-local scope; do not reinterpret as a pass                          |
 
-## Recommendation and smallest blockers
+## Historical recommendation before experimental opt-in
 
 Do not enable the native lane. Adapter 0.2.29's title endpoint mismatch is confirmed against CLI/server 1.18.32 and 1.18.35; matching those versions did not help. Browser testing showed that unauthenticated OpenCode with configured `--cors` allowed an unapproved loopback alias to read and create synthetic sessions. Basic auth blocked those same requests; the official SDK supports sending an Authorization header. The local user must enter the OpenCode server password at runtime, held ephemerally in browser memory and never bundled, persisted, or logged. The implementation is unconditionally fail-closed for the pinned adapter; there is no environment bypass. Unblocking requires an upstream adapter/server version, pinned in the app, plus evidence that a completed native prompt successfully generates a title (no summarize 400), and renewed origin/auth verification. No custom gateway is needed for the single-user trust model. Remote-host access remains **NOT TESTED**; the actual server bound only to loopback, and same-host Wi-Fi-IP connections were refused.
 
@@ -204,7 +284,7 @@ git diff --check — passed
 
 These checks do not replace the remaining manual E2E cases. The latest browser tests used only temporary project/profile data and a synthetic OpenCode Basic password; the provider key was passed from the environment to the temporary server and not read or recorded.
 
-## Temporary title workaround added after upstream report (2026-10-10)
+## Historical temporary title workaround (2026-10-10; since removed)
 
 An additional follow-up on this PR files the upstream adapter defect at [assistant-ui #9244](https://github.com/assistant-ui/assistant-ui/issues/9244). OpenCode v1.18.35 generates native titles through its first-prompt `SessionPrompt.ensureTitle` path; the assistant-ui adapter instead called the session compaction endpoint from `generateTitle`.
 
@@ -212,7 +292,7 @@ For explicitly opted-in **manual E2E testing only**, `lib/opencode-native-title-
 
 The original automatic-title **FAIL** remains a valid observation for the unmodified adapter; the workaround avoids that specific network request instead of proving upstream compatibility. A real first prompt nevertheless produced an OpenCode server-generated title, and no summarize request reached the server. The experimental gate is available only for trusted-local E2E. The B1–B23 matrix is partial: question handling, persistent permission semantics, remote-host access, full-page recovery, same-user multi-project switching, and some mixed-runtime background cases remain untested. **Production enablement and closure of #34 are blocked.** Remove the custom-fetch workaround once an upstream adapter release has verified native title behavior.
 
-## B15/B18 mitigations in PR #36 follow-up (updated 2026-10-11)
+## Historical B15/B18 mitigations on adapter 0.2.29 (updated 2026-10-11)
 
 The current worktree adds a native-client-scoped SDK fetch guard and a native-only outcome status. The guard tracks pending permission IDs from the pinned public `useOpenCodePermissions()` hook. At `POST /session/{id}/abort`, it invalidates its current pending IDs synchronously before forwarding the abort and notifies subscribers; the native tool fallback subscribes directly so stale Allow/Always allow/Deny controls are removed synchronously. `POST /permission/{id}/reply` for an invalidated ID throws before reaching `fetch`; the existing title workaround still handles only the bodyless summarize request. In the live B15 race below, the previously captured assistant-ui Allow callback was invoked after abort and the server received no permission-reply request. AI SDK, ACP, and the shared Thread are unchanged. This client-local guard does not protect arbitrary server clients or calls bypassing the mounted native client's fetch.
 

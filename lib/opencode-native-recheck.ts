@@ -7,15 +7,18 @@ export function createOpenCodeRecheck() {
     revision += 1;
     latest = check;
     if (running) return running;
-    running = (async () => {
-      while (latest) {
-        const work = latest;
-        const version = revision;
-        latest = undefined;
-        await work(() => version === revision);
+    running = Promise.resolve().then(async () => {
+      try {
+        while (latest) {
+          const work = latest;
+          const version = revision;
+          latest = undefined;
+          await work(() => version === revision);
+        }
+      } finally {
+        // Release ownership before another microtask can enqueue a new check.
+        running = undefined;
       }
-    })().finally(() => {
-      running = undefined;
     });
     return running;
   };
