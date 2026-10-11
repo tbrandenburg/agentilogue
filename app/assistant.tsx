@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Thread } from "@/components/assistant-ui/elements/thread.aui";
 import type { ThreadComponents } from "@/components/assistant-ui/elements/thread.aui";
 import { SessionControlsProvider } from "@/components/assistant-ui/elements/session-controls-slot";
+import { AiSdkSessionControls } from "@/components/assistant-ui/elements/ai-sdk-session-controls";
 import type { RunTargetId } from "@/lib/run-target";
 import type { OpenCodeNativeAvailability } from "@/lib/opencode-native-config";
 import { parseStoredNativeSessions, serializeNativeSessions } from "@/lib/native-session-storage";
@@ -272,6 +273,9 @@ const AiSdkSessionRuntime = ({
         hasOpenCodeApi={hasOpenCodeApi}
         hasOpenCodeNative={nativeOpenCode.enabled}
         nativeOpenCodeReason={nativeOpenCode.enabled ? undefined : nativeOpenCode.reason}
+        providerControls={
+          <AiSdkSessionControls config={session} hasOpenAIKey={hasOpenAIKey} onChange={onUpdate} />
+        }
         onChange={onUpdate}
       >
         <Thread components={THREAD_COMPONENTS} autoFocus={isActive} />
