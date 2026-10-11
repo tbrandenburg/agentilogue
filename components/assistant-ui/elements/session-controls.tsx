@@ -29,6 +29,8 @@ type Props = {
   config: Config;
   hasOpenAIKey: boolean;
   hasOpenCodeApi: boolean;
+  hasOpenCodeNative?: boolean;
+  nativeOpenCodeReason?: string;
   onChange: (patch: Partial<Config>) => void;
 };
 
@@ -96,7 +98,14 @@ function Option({
   );
 }
 
-export function SessionControls({ config, hasOpenAIKey, hasOpenCodeApi, onChange }: Props) {
+export function SessionControls({
+  config,
+  hasOpenAIKey,
+  hasOpenCodeApi,
+  hasOpenCodeNative,
+  nativeOpenCodeReason,
+  onChange,
+}: Props) {
   const hasMessages = useAuiState((state) => state.thread.messages.length > 0);
   const isRunning = useAuiState((state) => state.thread.isRunning);
   const isSubmitting = useAuiState((state) => state.composer.submission !== undefined);
@@ -119,7 +128,9 @@ export function SessionControls({ config, hasOpenAIKey, hasOpenCodeApi, onChange
   const tierIds = new Set(tierModels.map(([, id]) => id));
   const modelById = new Map(options.map((option) => [option.id, option]));
   const projectName =
-    config.runTarget === "opencode:cli" ? config.openCodeProjectName : config.projectName;
+    config.runTarget === "opencode:cli" || config.runTarget === "opencode:native"
+      ? config.openCodeProjectName
+      : config.projectName;
 
   return (
     <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1">
@@ -152,13 +163,20 @@ export function SessionControls({ config, hasOpenAIKey, hasOpenCodeApi, onChange
                 ? !hasOpenAIKey
                 : runTarget.id === "opencode:cli"
                   ? !hasOpenCodeApi
-                  : true
+                  : runTarget.id === "opencode:native"
+                    ? !hasOpenCodeNative
+                    : true
             }
           >
             {runTarget.label}
           </Option>
         ))}
       </Picker>
+      {hasOpenCodeNative === false && nativeOpenCodeReason && (
+        <span className="basis-full px-1.5 text-xs text-muted-foreground">
+          OpenCode · Native unavailable: {nativeOpenCodeReason}
+        </span>
+      )}
       <Picker label="Agent" value="default" disabled formatValue={() => "Default"}>
         <Option value="default">Default</Option>
       </Picker>

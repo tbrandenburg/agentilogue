@@ -9,7 +9,10 @@ import { Thread } from "@/components/assistant-ui/elements/thread.aui";
 import type { ThreadComponents } from "@/components/assistant-ui/elements/thread.aui";
 import { SessionControlsProvider } from "@/components/assistant-ui/elements/session-controls-slot";
 import type { RunTargetId } from "@/lib/run-target";
+import type { OpenCodeNativeAvailability } from "@/lib/opencode-native-config";
+import { parseStoredNativeSessions, serializeNativeSessions } from "@/lib/native-session-storage";
 import { AGENT_THREAD_COMPONENTS, OpenCodeSessionRuntime } from "./opencode-session";
+import { OpenCodeNativeSessionRuntime } from "./opencode-native-session";
 
 type ChatSession = {
   id: string;
@@ -18,6 +21,7 @@ type ChatSession = {
   openCodeProjectName: string;
   runTarget: RunTargetId | null;
   model?: string;
+  nativeSessionId?: string;
 };
 
 const THREAD_COMPONENTS: ThreadComponents = AGENT_THREAD_COMPONENTS;
@@ -41,6 +45,7 @@ const createSession = (
 type AssistantProps = {
   hasOpenAIKey: boolean;
   hasOpenCodeApi: boolean;
+  nativeOpenCode: OpenCodeNativeAvailability;
   initialConversationId: string;
   openCodeProjectName: string;
   projectName: string;
@@ -49,6 +54,7 @@ type AssistantProps = {
 export const Assistant = ({
   hasOpenAIKey,
   hasOpenCodeApi,
+  nativeOpenCode,
   initialConversationId,
   openCodeProjectName,
   projectName,
@@ -59,7 +65,50 @@ export const Assistant = ({
   const [sessions, setSessions] = useState([initialSession]);
   const [activeId, setActiveId] = useState(initialSession.id);
   const [runningIds, setRunningIds] = useState<string[]>([]);
+  const [restored, setRestored] = useState(false);
+  const [storageUnavailable, setStorageUnavailable] = useState(false);
   const nextTitleNumber = useRef(2);
+
+  useEffect(() => {
+    try {
+      const saved = parseStoredNativeSessions(
+        window.sessionStorage.getItem("agentilogue:native-sessions:v1"),
+        projectName,
+        openCodeProjectName,
+      );
+      if (saved) {
+        setSessions(saved.sessions);
+        setActiveId(saved.activeId);
+        nextTitleNumber.current =
+          Math.max(
+            1,
+            ...saved.sessions.map((session) =>
+              Number(/^chat (\d+)$/.exec(session.title)?.[1] ?? 1),
+            ),
+          ) + 1;
+      }
+    } catch {
+      setStorageUnavailable(true);
+    } finally {
+      setRestored(true);
+    }
+  }, [openCodeProjectName, projectName]);
+
+  useEffect(() => {
+    if (!restored || storageUnavailable) return;
+    try {
+      const serialized = serializeNativeSessions(
+        sessions,
+        activeId,
+        projectName,
+        openCodeProjectName,
+      );
+      if (serialized) window.sessionStorage.setItem("agentilogue:native-sessions:v1", serialized);
+      else window.sessionStorage.removeItem("agentilogue:native-sessions:v1");
+    } catch {
+      setStorageUnavailable(true);
+    }
+  }, [activeId, openCodeProjectName, projectName, restored, sessions, storageUnavailable]);
 
   const updateSession = (id: string, update: Partial<ChatSession>) => {
     setSessions((current) =>
@@ -88,8 +137,21 @@ export const Assistant = ({
       setActiveId(remaining[Math.max(0, sessions.findIndex((item) => item.id === id) - 1)].id);
   };
 
+  if (!restored) {
+    return (
+      <main role="status" className="grid h-dvh place-items-center text-sm text-muted-foreground">
+        Restoring native sessions…
+      </main>
+    );
+  }
+
   return (
     <main className="h-dvh px-3 pt-2 md:px-6">
+      {storageUnavailable ? (
+        <p role="alert" className="mx-auto mb-2 max-w-4xl text-xs text-destructive">
+          Native session reload recovery is unavailable in this browser tab.
+        </p>
+      ) : null}
       <Tabs.Root
         value={activeId}
         onValueChange={(value) => setActiveId(String(value))}
@@ -146,6 +208,7 @@ export const Assistant = ({
                 session={session}
                 hasOpenAIKey={hasOpenAIKey}
                 hasOpenCodeApi={hasOpenCodeApi}
+                nativeOpenCode={nativeOpenCode}
                 isActive={activeId === session.id}
                 onUpdate={(update) => updateSession(session.id, update)}
                 onRunningChange={updateRunning}
@@ -162,6 +225,7 @@ type SessionRuntimeProps = {
   session: ChatSession;
   hasOpenAIKey: boolean;
   hasOpenCodeApi: boolean;
+  nativeOpenCode: OpenCodeNativeAvailability;
   isActive: boolean;
   onUpdate: (update: Partial<ChatSession>) => void;
   onRunningChange: (id: string, running: boolean) => void;
@@ -170,6 +234,8 @@ type SessionRuntimeProps = {
 const SessionRuntime = (props: SessionRuntimeProps) =>
   props.session.runTarget === "opencode:cli" ? (
     <OpenCodeSessionRuntime {...props} />
+  ) : props.session.runTarget === "opencode:native" ? (
+    <OpenCodeNativeSessionRuntime {...props} />
   ) : (
     <AiSdkSessionRuntime {...props} />
   );
@@ -178,6 +244,7 @@ const AiSdkSessionRuntime = ({
   session,
   hasOpenAIKey,
   hasOpenCodeApi,
+  nativeOpenCode,
   isActive,
   onUpdate,
   onRunningChange,
@@ -202,6 +269,8 @@ const AiSdkSessionRuntime = ({
         config={session}
         hasOpenAIKey={hasOpenAIKey}
         hasOpenCodeApi={hasOpenCodeApi}
+        hasOpenCodeNative={nativeOpenCode.enabled}
+        nativeOpenCodeReason={nativeOpenCode.enabled ? undefined : nativeOpenCode.reason}
         onChange={onUpdate}
       >
         <Thread components={THREAD_COMPONENTS} autoFocus={isActive} />
