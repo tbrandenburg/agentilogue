@@ -78,10 +78,11 @@ The intended ACP composer rail is Project and Run with only. Its provider contra
 
 ## Current dependency notes
 
-- [#41](https://github.com/tbrandenburg/agentilogue/issues/41): suggestion send guard removed, AI SDK welcome suggestion configured, and ready/unavailable suggestion sends passed the focused browser check above (issue currently open).
-- [#42](https://github.com/tbrandenburg/agentilogue/issues/42): copied-source drift guard and inventory are included in PR #49; upstream source bytes are verified explicitly during baseline refresh, not fetched by CI.
+- [#41](https://github.com/tbrandenburg/agentilogue/issues/41): closed by merged PR #49; the suggestion send guard was removed, the AI SDK welcome suggestion was configured, and ready/unavailable sends passed the focused browser check above.
+- [#42](https://github.com/tbrandenburg/agentilogue/issues/42): closed by merged PR #49; the copied-source drift guard covers 14 verified files, while exact upstream bytes are checked explicitly during baseline refresh, not fetched by CI.
 - [#43](https://github.com/tbrandenburg/agentilogue/issues/43): refactor is in draft [PR #50](https://github.com/tbrandenburg/agentilogue/pull/50); native/ACP control tests and real prompt E2E passed, with active-run tab switching and real catalog-loss behavior still untested.
 - [#44](https://github.com/tbrandenburg/agentilogue/issues/44): **DEFERRED**; no Pi API/UI is exposed. The evidence report records why the access boundary is unproven and the conditions needed to resume implementation; the issue remains open.
 - [#45](https://github.com/tbrandenburg/agentilogue/issues/45): blocked by #44 and not implemented.
 - [#46](https://github.com/tbrandenburg/agentilogue/issues/46): blocked while upstream [PR #8003](https://github.com/assistant-ui/assistant-ui/pull/8003) remains open; no unpublished slot is treated as available.
 - [#47](https://github.com/tbrandenburg/agentilogue/issues/47): **DEFERRED**; current pins retained pending validation of a released candidate; no incompatibility is claimed.
+- [#48](https://github.com/tbrandenburg/agentilogue/issues/48): closed by merged PR #49; the five-touchpoint PR #36 baseline is recorded, effort remains unmeasured, and 2× remains a future target.
