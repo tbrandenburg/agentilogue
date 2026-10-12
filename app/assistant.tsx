@@ -1,6 +1,12 @@
 "use client";
 
-import { AssistantRuntimeProvider, useAui, useAuiState } from "@assistant-ui/react";
+import {
+  AssistantRuntimeProvider,
+  AuiConfig,
+  Suggestions,
+  useAui,
+  useAuiState,
+} from "@assistant-ui/react";
 import { Tabs } from "@base-ui/react/tabs";
 import { AssistantChatTransport, useChatRuntime } from "@assistant-ui/ai-sdk";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
@@ -263,7 +269,10 @@ const AiSdkSessionRuntime = ({
   });
 
   return (
-    <AssistantRuntimeProvider runtime={runtime}>
+    <AssistantRuntimeProvider
+      runtime={runtime}
+      config={AuiConfig({ suggestions: Suggestions(["What can you help me with?"]) })}
+    >
       <ModelContextBridge model={session.model} />
       <RunningStateReporter onRunningChange={reportRunning} />
       <SessionControlsProvider

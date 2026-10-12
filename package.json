@@ -10,6 +10,7 @@
     "format:fix": "oxfmt",
     "lint": "oxlint",
     "test": "bun test --pass-with-no-tests",
+    "assistant-ui:drift-check": "bun scripts/assistant-ui-drift.ts",
     "opencode:acp-proof": "bun scripts/opencode-acp-proof.ts",
     "models:check": "bun scripts/models.ts check",
     "models:sync": "bun scripts/models.ts sync",
