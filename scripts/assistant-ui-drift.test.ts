@@ -11,15 +11,15 @@ const manifest = {
   upstream: {
     repository: "assistant-ui/assistant-ui",
     commit: "dc840613f1edbe9cebcc01d0112add781aca0449",
-    path: "packages/ui/src/components/react/assistant-ui/elements/thread.aui.tsx",
-    blob: "fbffa25727755ff79817c1a94cda1b0ad325b412",
   },
   files: [
     {
       path: "thread.tsx",
+      upstreamPath: "thread.tsx",
+      upstreamBlob: "fbffa25727755ff79817c1a94cda1b0ad325b412",
       formattedSha256: "",
       approvedPatches: [
-        { name: "ComposerActionLeft", reason: "accessory", introducedBy: "issue #41" },
+        { name: "ComposerActionLeft", reason: "accessory", introducedBy: "PR #17" },
       ],
     },
   ],
@@ -62,8 +62,9 @@ describe("assistant-ui copied-source drift check", () => {
     const result = await checkFile(baseline, "thread.tsx", 'const answer = "broken";\n');
     assert.equal(result.ok, false);
     assert.match(result.message, /Unexpected functional drift: thread\.tsx/);
-    assert.match(result.message, /ComposerActionLeft \(issue #41\)/);
+    assert.match(result.message, /ComposerActionLeft \(PR #17\)/);
     assert.match(result.message, /formattedSha256/);
+    assert.match(result.message, /upstream Git blob/);
   });
 
   it("accepts an explicitly approved baseline update", async () => {
@@ -114,7 +115,7 @@ describe("assistant-ui copied-source drift check", () => {
     }
   });
 
-  it("tracks only the copied Thread component", async () => {
+  it("tracks verified registry copies without classifying app-owned controls as upstream", async () => {
     const manifestText = await readFile(
       new URL("../docs/assistant-ui-source.json", import.meta.url),
       "utf8",
@@ -122,7 +123,27 @@ describe("assistant-ui copied-source drift check", () => {
     const checkedInManifest = JSON.parse(manifestText) as typeof manifest;
     assert.deepEqual(
       checkedInManifest.files.map((file) => file.path),
-      ["components/assistant-ui/elements/thread.aui.tsx"],
+      [
+        "components/assistant-ui/elements/attachment.aui.tsx",
+        "components/assistant-ui/elements/file.tsx",
+        "components/assistant-ui/elements/follow-up-suggestions.aui.tsx",
+        "components/assistant-ui/elements/image.tsx",
+        "components/assistant-ui/elements/markdown-text.tsx",
+        "components/assistant-ui/elements/media-player.tsx",
+        "components/assistant-ui/elements/model-selector.tsx",
+        "components/assistant-ui/elements/reasoning.aui.tsx",
+        "components/assistant-ui/elements/reasoning.tsx",
+        "components/assistant-ui/elements/surfaces.tsx",
+        "components/assistant-ui/elements/thread.aui.tsx",
+        "components/assistant-ui/elements/tool-fallback.aui.tsx",
+        "components/assistant-ui/elements/tool-group.aui.tsx",
+        "components/assistant-ui/elements/tooltip-icon-button.tsx",
+      ],
+    );
+    assert.ok(checkedInManifest.files.every((file) => file.upstreamBlob.length === 40));
+    assert.equal(
+      checkedInManifest.files.some((file) => file.path.endsWith("session-controls.tsx")),
+      false,
     );
   });
 });

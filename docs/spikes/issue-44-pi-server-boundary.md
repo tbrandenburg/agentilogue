@@ -1,6 +1,6 @@
-# Issue #44: Pi server boundary — NO-GO
+# Issue #44: Pi server boundary — deferred
 
-**Decision:** Do not expose or enable Pi in this change. No `/api/pi/**` routes or Pi dependencies have been added, and no UI selector has been enabled. The adapter's HTTP/SSE contract is straightforward to wire, but a secure deployment boundary has not been demonstrated for this app.
+**Decision:** Defer implementation and do not expose or enable Pi. No `/api/pi/**` routes or Pi dependencies have been added, and no UI selector has been enabled. The adapter's HTTP/SSE contract is straightforward to wire, but a secure deployment boundary has not been demonstrated for this app. Issue #44 remains open for this implementation work; #45 stays blocked.
 
 ## Evidence
 
@@ -16,11 +16,11 @@
 
 Pi runs a filesystem- and shell-capable agent with a process-level supervisor. Exposing its read, mutation, and SSE methods without a boundary demonstrated for the actual deployment would grant that capability to any caller able to reach the Next.js process. A server-controlled scratch workspace narrows file scope but is not an OS sandbox for shell tools. An environment feature flag alone does not authenticate callers or prove deployment binding.
 
-Therefore the safe state is absence of the routes and dependencies. This avoids an API that looks enabled while relying on unproven route-level checks. No Pi runtime is reachable from the app as changed.
+Therefore the safe state is absence of the routes and dependencies. This avoids an API that looks enabled while relying on unproven route-level checks. No Pi runtime is reachable from the app as changed. This is a deferment decision, not completion of #44's server implementation DoD.
 
 ## Reconsideration requirements
 
-Implement the route layer only after the deployment has a concrete server-side trusted-local boundary that does not depend on a browser-supplied secret, or after an explicitly scoped ephemeral user-authentication flow is authorized. Then pin the adapter and Pi SDK exactly, inspect the matching published package exports and official example, bind the supervisor to a resolved server-owned scratch workspace, and verify every upstream HTTP/SSE operation. Negative tests must cover all endpoints, and an actual disposable-workspace run must prove that SSE disconnect unsubscribes without cancelling the Pi run. Run frozen install, generated route validation, production build, and E2E on a filesystem with adequate free space.
+Next step for #44: establish and document the supported deployment trust boundary (loopback binding plus server-side Host/Origin/Fetch-Metadata and request validation, or an explicitly authorized user-authentication/CSRF flow). Then implement and test every upstream HTTP/SSE endpoint; use a disposable workspace to prove disconnect unsubscribes without cancelling a run. Pin exact dependencies and run frozen install, generated route validation, production build, negative security tests, and E2E with adequate free space.
 
 ## Research links
 

@@ -1,6 +1,6 @@
 # Issue #47: assistant-ui compatibility assessment
 
-**Decision: NO-GO for a dependency or lockfile change.** Retain the current pins. The observed version lag does not establish incompatibility, and this assessment did not identify a concrete compatibility failure that justifies risking the working chat and native opencode paths.
+**Assessment: DEFERRED.** Retain the current pins pending validation of a released upgrade candidate. This review found no incompatibility in the current set; it did not validate that a newer set is incompatible or behaviorally safe.
 
 ## Evidence collected
 
@@ -29,19 +29,19 @@ Official npm metadata reports newer stable releases `@assistant-ui/react@0.15.27
 
 The copied Thread's recorded source of truth is the released `@assistant-ui/react@0.15.25` tag at commit `dc840613f1edbe9cebcc01d0112add781aca0449` (`docs/assistant-ui-upgrades.md:3-6`). No registry refresh was made. A newer package version alone is not evidence that copied registry files can be mixed with this baseline without re-review and drift validation.
 
-## Why NO-GO
+## Why the upgrade is deferred
 
 1. There is no observed peer-range conflict in the installed/locked package set and no concrete issue #47 incompatibility demonstrated by the evidence collected.
 2. A replacement candidate's published metadata is not enough to establish the required coherent, behaviorally safe set. Proving that would require adjusting the exact package/override set, obtaining the lock, validating a frozen install outside ancestor dependency fallback, and exercising the affected runtimes/build routes.
-3. Available space was only **884 MB** before creating the requested worktree and **879 MB** afterward; the filesystem reports 100% used. This is not a safe margin for package installation or a Next production build. Neither was run. The required isolated frozen-lockfile acceptance and runtime E2E therefore cannot be claimed.
-4. In the absence of a demonstrated defect, the current published peer compatibility and existing runtime evidence favor retaining working pins rather than taking an unvalidated upgrade risk.
+3. At assessment time, available space was under 900 MB on a filesystem reporting 100% use. Install/build and isolated frozen-lockfile validation were not run, so no claim of candidate incompatibility or successful upgrade is made.
+4. In the absence of a demonstrated defect, the current pins are retained while the upgrade remains deferred until validation resources and a coherent candidate set are available.
 
 ## Scope and validation record
 
 - Read the full issue and comments using `gh issue view 47 --comments --json title,body,comments`; issue #47 had no comments.
 - Read-only inspection: `package.json`, `bun.lock`, `docs/assistant-ui-upgrades.md`; `bun pm ls --all`; published npm metadata via `npm view`.
 - Context7 references consulted: `/assistant-ui/assistant-ui` for AI SDK v7 runtime selection and release guidance; `/vercel/next.js` for route exports and generated route-type validation.
-- No dependency, lockfile, app/runtime/UI, CI, copied Thread, or upgrade-baseline files were changed. No install, build, or E2E was run due to disk capacity.
+- No dependency or lockfile changes were made. No install, build, or E2E was run during the assessment due to disk capacity; a later build of the unchanged pinned set does not validate an upgrade candidate.
 - `docs/assistant-ui-upgrades.md` remains untouched; the work is a separate issue report to avoid overlap with #41.
 
 ## References

@@ -7,9 +7,11 @@ import { spawnSync } from "node:child_process";
 
 type Manifest = {
   formatter: string;
-  upstream: { repository: string; commit: string; path: string; blob: string };
+  upstream: { repository: string; commit: string };
   files: Array<{
     path: string;
+    upstreamPath: string;
+    upstreamBlob: string;
     formattedSha256: string;
     approvedPatches: Array<{ name: string; reason: string; introducedBy: string }>;
   }>;
@@ -83,10 +85,11 @@ export const checkFile = async (
       `Unexpected functional drift: ${filename}`,
       `  expected formatted SHA-256: ${entry.formattedSha256}`,
       `  actual formatted SHA-256:   ${actual}`,
-      `  pinned upstream: ${manifest.upstream.repository}@${manifest.upstream.commit}:${manifest.upstream.path}`,
+      `  pinned upstream: ${manifest.upstream.repository}@${manifest.upstream.commit}:${entry.upstreamPath}`,
+      `  upstream Git blob: ${entry.upstreamBlob}`,
       `  approved local patches: ${approved || "none"}`,
       ...(diff ? ["  working-tree diff:", diff] : []),
-      "Review the functional change, update the approved patch entry and formattedSha256 in docs/assistant-ui-source.json, and include the rationale in the PR.",
+      "Review the functional change, verify the pinned upstream blob, update the approved patch entry and formattedSha256 in docs/assistant-ui-source.json, and include the rationale in the PR.",
     ].join("\n"),
   };
 };
