@@ -1,8 +1,17 @@
 "use client";
 
-import { createContext, useContext, type PropsWithChildren, type ReactNode } from "react";
+import { createContext, useContext, type PropsWithChildren } from "react";
 import { SessionControls } from "@/components/assistant-ui/elements/session-controls";
-import type { SessionControlsConfig } from "@/components/assistant-ui/elements/session-controls";
+import type { RunTargetId } from "@/lib/run-target";
+import type { NativeCatalog, NativeSelection } from "@/lib/native-selection";
+
+type SessionControlsConfig = NativeSelection & {
+  projectName: string;
+  openCodeProjectName: string;
+  runTarget: RunTargetId | null;
+  model?: string;
+  nativeSessionId?: string;
+};
 
 type SessionControlsContextValue = {
   config: SessionControlsConfig;
@@ -10,7 +19,8 @@ type SessionControlsContextValue = {
   hasOpenCodeApi: boolean;
   hasOpenCodeNative?: boolean;
   nativeOpenCodeReason?: string;
-  providerControls?: ReactNode;
+  nativeCatalog?: NativeCatalog;
+  nativeSelectionReason?: string;
   onChange: (patch: Partial<SessionControlsConfig>) => void;
 };
 
@@ -36,7 +46,8 @@ export function AgentilogueSessionControlsSlot() {
       hasOpenCodeApi={value.hasOpenCodeApi}
       hasOpenCodeNative={value.hasOpenCodeNative ?? false}
       nativeOpenCodeReason={value.nativeOpenCodeReason}
-      providerControls={value.providerControls}
+      nativeCatalog={value.nativeCatalog}
+      nativeSelectionReason={value.nativeSelectionReason}
       onChange={value.onChange}
     />
   );
