@@ -1,0 +1,113 @@
+{
+  "formatter": "oxfmt@0.68.0",
+  "upstream": {
+    "repository": "assistant-ui/assistant-ui",
+    "commit": "dc840613f1edbe9cebcc01d0112add781aca0449"
+  },
+  "files": [
+    {
+      "path": "components/assistant-ui/elements/attachment.aui.tsx",
+      "upstreamPath": "packages/ui/src/components/react/assistant-ui/elements/attachment.aui.tsx",
+      "upstreamBlob": "cd06d2b578bebb902186893feb3b539b69dcc54c",
+      "formattedSha256": "d90c72a701307cda7c84e5e7dc4138083708413e2f7996688b8cd32cbb037c50",
+      "approvedPatches": []
+    },
+    {
+      "path": "components/assistant-ui/elements/file.tsx",
+      "upstreamPath": "packages/ui/src/components/react/assistant-ui/elements/file.tsx",
+      "upstreamBlob": "09355d8b970a67ac524b223ec0a846c063f38f87",
+      "formattedSha256": "a60182828d8411985e7390609a0eb715700f80abfe7c566f0716be0ffc44cafe",
+      "approvedPatches": []
+    },
+    {
+      "path": "components/assistant-ui/elements/follow-up-suggestions.aui.tsx",
+      "upstreamPath": "packages/ui/src/components/react/assistant-ui/elements/follow-up-suggestions.aui.tsx",
+      "upstreamBlob": "38689e74f97e2481631ec7c4c00ce4af9138162e",
+      "formattedSha256": "43c6cf2edeaef47c1a3cde98dacfa370bf18e388a257d33c86bdbadd1ecbe26c",
+      "approvedPatches": []
+    },
+    {
+      "path": "components/assistant-ui/elements/image.tsx",
+      "upstreamPath": "packages/ui/src/components/react/assistant-ui/elements/image.tsx",
+      "upstreamBlob": "b0b41af15f7f6028a8d7da55d82e8746dc8090dd",
+      "formattedSha256": "5440f47be5d070d6b53770d2853510a3f3e74961a5b5675a20317bb189e368cf",
+      "approvedPatches": []
+    },
+    {
+      "path": "components/assistant-ui/elements/markdown-text.tsx",
+      "upstreamPath": "packages/ui/src/components/react/assistant-ui/elements/markdown-text.tsx",
+      "upstreamBlob": "6098103bf8270673d3fda6f1c948d35dc444fcdf",
+      "formattedSha256": "53c41a1c1894fa35b72f55d1f40f78c03e71819f31ca53d615ef41ae2f107589",
+      "approvedPatches": []
+    },
+    {
+      "path": "components/assistant-ui/elements/media-player.tsx",
+      "upstreamPath": "packages/ui/src/components/react/assistant-ui/elements/media-player.tsx",
+      "upstreamBlob": "d4fd2d6289ad16eaf3c548c35799d1bf3a8a0fc1",
+      "formattedSha256": "94838e94fb9811c79502694d6639456c75abf8ca45d9e5612e2af745f700d085",
+      "approvedPatches": []
+    },
+    {
+      "path": "components/assistant-ui/elements/model-selector.tsx",
+      "upstreamPath": "packages/ui/src/components/react/assistant-ui/elements/model-selector.tsx",
+      "upstreamBlob": "9f3ddb18e95856cd53291dbdcb342c2940ae1603",
+      "formattedSha256": "309abdd8ba212e5984eb77f9bc1f54cc2d0fc006fa657a1005dc57c67c4833ee",
+      "approvedPatches": []
+    },
+    {
+      "path": "components/assistant-ui/elements/reasoning.aui.tsx",
+      "upstreamPath": "packages/ui/src/components/react/assistant-ui/elements/reasoning.aui.tsx",
+      "upstreamBlob": "8d9d01760e462cbb4b50bbd1d00cd6836c87b127",
+      "formattedSha256": "371733bfb27599f876961813fd803a25a91d31407890b051e8c28413c564d316",
+      "approvedPatches": []
+    },
+    {
+      "path": "components/assistant-ui/elements/reasoning.tsx",
+      "upstreamPath": "packages/ui/src/components/react/assistant-ui/elements/reasoning.tsx",
+      "upstreamBlob": "add789e1e5cf1a89c5a494a120c6848d011a0f7b",
+      "formattedSha256": "298db316958949056b9098f8d5b1e2fd175916f7162e7f375f99fbe82824cb20",
+      "approvedPatches": []
+    },
+    {
+      "path": "components/assistant-ui/elements/surfaces.tsx",
+      "upstreamPath": "packages/ui/src/components/react/assistant-ui/elements/surfaces.tsx",
+      "upstreamBlob": "a5749f5c4a9d3e51abc6212b4c71b83f69763900",
+      "formattedSha256": "cc468c7d221496cc823f72fdb643492ec15d96cbd6783b64979ed887fffa6f8f",
+      "approvedPatches": []
+    },
+    {
+      "path": "components/assistant-ui/elements/thread.aui.tsx",
+      "upstreamPath": "packages/ui/src/components/react/assistant-ui/elements/thread.aui.tsx",
+      "upstreamBlob": "fbffa25727755ff79817c1a94cda1b0ad325b412",
+      "formattedSha256": "0508d4ab2921d9a0d1ec69d679791b988bee5cf2165995b3131688f83691dd16",
+      "approvedPatches": [
+        {
+          "name": "ComposerActionLeft",
+          "reason": "Add a generic optional composer accessory beside the attachment control.",
+          "introducedBy": "PR #17"
+        }
+      ]
+    },
+    {
+      "path": "components/assistant-ui/elements/tool-fallback.aui.tsx",
+      "upstreamPath": "packages/ui/src/components/react/assistant-ui/elements/tool-fallback.aui.tsx",
+      "upstreamBlob": "0d576811a4b7a3dcb25a79782ef77527981bf1ea",
+      "formattedSha256": "e50c8022eff697939e0bff3dc4b06eed2b461c69ddf965f840595fe5d82ab5eb",
+      "approvedPatches": []
+    },
+    {
+      "path": "components/assistant-ui/elements/tool-group.aui.tsx",
+      "upstreamPath": "packages/ui/src/components/react/assistant-ui/elements/tool-group.aui.tsx",
+      "upstreamBlob": "b335981d81b8e07647f498554d8198f86d583d23",
+      "formattedSha256": "6050dbdfd346bf5af5cb8df8c96fff1281a1a0bb9243b947b0be3f145b3dcd06",
+      "approvedPatches": []
+    },
+    {
+      "path": "components/assistant-ui/elements/tooltip-icon-button.tsx",
+      "upstreamPath": "packages/ui/src/components/react/assistant-ui/elements/tooltip-icon-button.tsx",
+      "upstreamBlob": "81eeeb868d43b81413c7693c0ed86966dc97eded",
+      "formattedSha256": "b5482d73d4bea08890077affdce9263cc2b4eff4c455a5c24e0bc342b0f46319",
+      "approvedPatches": []
+    }
+  ]
+}
