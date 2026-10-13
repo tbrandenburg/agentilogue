@@ -2,27 +2,13 @@
 
 import { Select } from "@base-ui/react/select";
 import { CheckIcon, ChevronDownIcon } from "lucide-react";
-import { useState, type ReactNode } from "react";
-import models from "@/data/models.json";
+import { type ReactNode } from "react";
 import { runTargets, type RunTargetId } from "@/lib/run-target";
 import { useAuiState } from "@assistant-ui/react";
-import { DEFAULT_OPTION_ID, creatorLabels, modelFromSelectorValue } from "@/lib/model-selection";
-import {
-  ModelSelectorContent,
-  ModelSelectorGroup,
-  ModelSelectorItem,
-  ModelSelectorList,
-  ModelSelectorRoot,
-  ModelSelectorTrigger,
-  ModelSelectorValue,
-  type ModelOption,
-} from "@/components/assistant-ui/elements/model-selector";
-import { CommandItem } from "@/components/ui/command";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { nativeModelId } from "@/lib/native-selection";
-import type { NativeCatalog, NativeSelection } from "@/lib/native-selection";
+import type { NativeSelection } from "@/lib/native-selection";
 
-type Config = NativeSelection & {
+export type SessionControlsConfig = NativeSelection & {
   projectName: string;
   openCodeProjectName: string;
   runTarget: RunTargetId | null;
@@ -30,14 +16,13 @@ type Config = NativeSelection & {
   nativeSessionId?: string;
 };
 type Props = {
-  config: Config;
+  config: SessionControlsConfig;
   hasOpenAIKey: boolean;
   hasOpenCodeApi: boolean;
   hasOpenCodeNative?: boolean;
   nativeOpenCodeReason?: string;
-  nativeCatalog?: NativeCatalog;
-  nativeSelectionReason?: string;
-  onChange: (patch: Partial<Config>) => void;
+  providerControls?: ReactNode;
+  onChange: (patch: Partial<SessionControlsConfig>) => void;
 };
 
 const buttonClass =
@@ -47,7 +32,7 @@ const popupClass =
 const itemClass =
   "flex cursor-pointer items-center gap-2 rounded px-2.5 py-2 text-sm outline-none data-[highlighted]:bg-accent data-[disabled]:cursor-not-allowed data-[disabled]:text-muted-foreground/70";
 
-function Picker({
+export function Picker({
   label,
   value,
   disabled,
@@ -104,7 +89,7 @@ function Picker({
   );
 }
 
-function Option({
+export function Option({
   value,
   children,
   disabled,
@@ -129,39 +114,12 @@ export function SessionControls({
   hasOpenCodeApi,
   hasOpenCodeNative,
   nativeOpenCodeReason,
-  nativeCatalog,
-  nativeSelectionReason,
+  providerControls,
   onChange,
 }: Props) {
   const hasMessages = useAuiState((state) => state.thread.messages.length > 0);
-  const isRunning = useAuiState((state) => state.thread.isRunning);
-  const isSubmitting = useAuiState((state) => state.composer.submission !== undefined);
-  const [modelsExpanded, setModelsExpanded] = useState(false);
   const isNative = config.runTarget === "opencode:native";
   const nativeLocked = hasMessages || Boolean(config.nativeSessionId);
-  const nativeEnabled = Boolean(nativeCatalog) && !nativeLocked && !isRunning && !isSubmitting;
-  const nativeHint =
-    nativeSelectionReason ??
-    (!nativeCatalog
-      ? "Loading opencode models and agents…"
-      : "Default delegates to opencode: the agent’s model, otherwise the session/server model. Choices lock after the first message; start a new session to reset them.");
-  const tierModels = Object.entries(models.openai.tiers).filter(
-    (entry): entry is [string, string] => typeof entry[1] === "string",
-  );
-  const modelEnabled =
-    config.runTarget === "openai:vercel-ai" && hasOpenAIKey && !isRunning && !isSubmitting;
-  const options: ModelOption[] = [
-    { id: DEFAULT_OPTION_ID, name: "Default" },
-    ...Object.entries(models).flatMap(([creator, catalog]) =>
-      catalog.models.map((id) => ({
-        id,
-        name: id,
-        ...(creator !== "openai" || !modelEnabled ? { disabled: true } : {}),
-      })),
-    ),
-  ];
-  const tierIds = new Set(tierModels.map(([, id]) => id));
-  const modelById = new Map(options.map((option) => [option.id, option]));
   const projectName =
     config.runTarget === "opencode:cli" || config.runTarget === "opencode:native"
       ? config.openCodeProjectName
@@ -214,124 +172,7 @@ export function SessionControls({
           </Option>
         ))}
       </Picker>
-      {isNative ? (
-        <>
-          <Picker
-            label="Agent"
-            hint={nativeHint}
-            value={config.nativeAgent ?? ""}
-            disabled={!nativeEnabled}
-            formatValue={(value) => value || "Default"}
-            onValueChange={(value) => onChange({ nativeAgent: value || undefined })}
-          >
-            <Option value="">Default</Option>
-            {nativeCatalog?.agents.map((agent) => (
-              <Option key={agent} value={agent}>
-                {agent}
-              </Option>
-            ))}
-          </Picker>
-          <Picker
-            label="Model"
-            hint={nativeHint}
-            value={config.nativeModel ? nativeModelId(config.nativeModel) : ""}
-            disabled={!nativeEnabled}
-            formatValue={() =>
-              config.nativeModel
-                ? `${config.nativeModel.providerID}/${config.nativeModel.modelID}`
-                : "Default"
-            }
-            onValueChange={(value) =>
-              onChange({
-                nativeModel: nativeCatalog?.models.find((option) => option.id === value)?.model,
-              })
-            }
-          >
-            <Option value="">Default</Option>
-            {nativeCatalog?.models.map((option) => (
-              <Option key={option.id} value={option.id}>
-                {option.name}
-              </Option>
-            ))}
-          </Picker>
-        </>
-      ) : (
-        <>
-          <Picker label="Agent" value="default" disabled formatValue={() => "Default"}>
-            <Option value="default">Default</Option>
-          </Picker>
-          <ModelSelectorRoot
-            models={options}
-            value={config.model ?? DEFAULT_OPTION_ID}
-            onValueChange={(value) => onChange({ model: modelFromSelectorValue(value) })}
-            onOpenChange={(open) => {
-              if (!open) setModelsExpanded(false);
-            }}
-          >
-            <ModelSelectorTrigger
-              aria-label="Model"
-              disabled={!modelEnabled}
-              variant="ghost"
-              size="sm"
-              className={`${buttonClass} max-w-40`}
-            >
-              <span className="truncate">Model · </span>
-              <ModelSelectorValue
-                placeholder="Default"
-                className="min-w-0 flex-1 [&>span]:truncate"
-              />
-            </ModelSelectorTrigger>
-            <ModelSelectorContent
-              searchable={false}
-              className="max-h-[min(28rem,calc(100vh-2rem))]"
-            >
-              <ModelSelectorList className="max-h-[min(28rem,calc(100vh-2rem))] overflow-y-auto">
-                <ModelSelectorGroup heading="">
-                  <ModelSelectorItem model={options[0]!} disabled={!modelEnabled}>
-                    <span className="truncate">Default</span>
-                  </ModelSelectorItem>
-                </ModelSelectorGroup>
-                <ModelSelectorGroup heading="Preconfigured">
-                  {tierModels.map(([tier, id]) => {
-                    const model = modelById.get(id);
-                    if (!model) return null;
-                    return (
-                      <ModelSelectorItem key={tier} model={model} disabled={!modelEnabled}>
-                        <span className="flex min-w-0 flex-1 items-center justify-between gap-5">
-                          <span className="font-medium capitalize">{tier}</span>
-                          <span className="text-muted-foreground truncate text-xs">{id}</span>
-                        </span>
-                      </ModelSelectorItem>
-                    );
-                  })}
-                </ModelSelectorGroup>
-                <CommandItem
-                  value="__models_disclosure__"
-                  onSelect={() => setModelsExpanded((expanded) => !expanded)}
-                  className="cursor-pointer"
-                >
-                  {modelsExpanded ? "▾ Models" : "▸ Models"}
-                </CommandItem>
-                {modelsExpanded &&
-                  Object.entries(models).map(([creator, catalog]) => {
-                    const catalogOptions = catalog.models
-                      .filter((id) => creator !== "openai" || !tierIds.has(id))
-                      .map((id) => modelById.get(id))
-                      .filter((model): model is ModelOption => model !== undefined);
-                    if (catalogOptions.length === 0) return null;
-                    return (
-                      <ModelSelectorGroup key={creator} heading={creatorLabels[creator] ?? creator}>
-                        {catalogOptions.map((model) => (
-                          <ModelSelectorItem key={model.id} model={model} />
-                        ))}
-                      </ModelSelectorGroup>
-                    );
-                  })}
-              </ModelSelectorList>
-            </ModelSelectorContent>
-          </ModelSelectorRoot>
-        </>
-      )}
+      {providerControls}
     </div>
   );
 }
