@@ -64,7 +64,7 @@ The unit test imports assistant-ui's internal suggestion-policy helper and is ex
 
 ### Issue #43 follow-up
 
-The provider-controls refactor is excluded from PR #49 and available in [draft follow-up PR #50](https://github.com/tbrandenburg/agentilogue/pull/50). The PR includes public-runtime render tests and production-browser evidence: native catalog loading, Agent/Model selection, first-message locking, reload/password reconnect, restored-session locking, a real native response, and a real ACP response all passed. Issue #43 remains open because active-run tab switching and a real server-outage/stale-catalog scenario are still **NOT TESTED**.
+The provider-controls refactor is excluded from PR #49 and available in follow-up PR #50. The PR includes public-runtime render tests and production-browser evidence: native catalog loading, Agent/Model selection, first-message locking, reload/password reconnect, restored-session locking, a real native response, a real ACP response, active-run tab switching, and a real server-outage/stale-catalog scenario all passed. Issue #43 remains open pending final review and merge.
 
 The intended ACP composer rail is Project and Run with only. Its provider contract reports no model or agent selection, so the previously displayed disabled Agent/Model placeholders are intentionally omitted in the follow-up refactor.
 
@@ -80,9 +80,10 @@ The intended ACP composer rail is Project and Run with only. Its provider contra
 
 - [#41](https://github.com/tbrandenburg/agentilogue/issues/41): closed by merged PR #49; the suggestion send guard was removed, the AI SDK welcome suggestion was configured, and ready/unavailable sends passed the focused browser check above.
 - [#42](https://github.com/tbrandenburg/agentilogue/issues/42): closed by merged PR #49; the copied-source drift guard covers 14 verified files, while exact upstream bytes are checked explicitly during baseline refresh, not fetched by CI.
-- [#43](https://github.com/tbrandenburg/agentilogue/issues/43): refactor is in draft [PR #50](https://github.com/tbrandenburg/agentilogue/pull/50); native/ACP control tests and real prompt E2E passed, with active-run tab switching and real catalog-loss behavior still untested.
+- [#43](https://github.com/tbrandenburg/agentilogue/issues/43): provider-controls refactor and its native/ACP render and E2E evidence are in [PR #50](https://github.com/tbrandenburg/agentilogue/pull/50); issue remains open pending merge.
 - [#44](https://github.com/tbrandenburg/agentilogue/issues/44): **DEFERRED**; no Pi API/UI is exposed. The evidence report records why the access boundary is unproven and the conditions needed to resume implementation; the issue remains open.
 - [#45](https://github.com/tbrandenburg/agentilogue/issues/45): blocked by #44 and not implemented.
 - [#46](https://github.com/tbrandenburg/agentilogue/issues/46): blocked while upstream [PR #8003](https://github.com/assistant-ui/assistant-ui/pull/8003) remains open; no unpublished slot is treated as available.
 - [#47](https://github.com/tbrandenburg/agentilogue/issues/47): **DEFERRED**; current pins retained pending validation of a released candidate; no incompatibility is claimed.
 - [#48](https://github.com/tbrandenburg/agentilogue/issues/48): closed by merged PR #49; the five-touchpoint PR #36 baseline is recorded, effort remains unmeasured, and 2× remains a future target.
+- [#8](https://github.com/tbrandenburg/agentilogue/issues/8): catalog drift refreshed in merged PR #51; current models.dev check passes.
