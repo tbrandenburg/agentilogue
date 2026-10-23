@@ -73,6 +73,8 @@ See [ADR 0001](docs/decisions/0001-agent-integration-lanes.md) for the accepted 
 
 ## Lessons Learned
 
+- 2026-10-23: Pitfall: Next's `.next/cache/.tsbuildinfo` retained stale dependency-type errors after an upgrade. Prevention: Invalidate that generated cache and repeat the production build before attributing diagnostics to the current installed packages.
+- 2026-10-23: Pitfall: A global agent CLI can differ from the app's pinned SDK/server generation. Prevention: Verify the executable version before E2E and launch a disposable version-matched binary instead of relying on PATH.
 - 2026-10-11: Pitfall: Source typechecks missed unsupported exports in Next.js route modules until generated validators existed. Prevention: Keep testable handler factories outside route modules and validate generated route types after browser runs or a production build.
 
 - 2026-10-11: Pitfall: Browser proof imports resolved undeclared dependencies from an ancestor workspace. Prevention: Declare proof dependencies and validate a frozen-lockfile install outside the ancestor dependency tree before trusting build results.

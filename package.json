@@ -9,7 +9,7 @@
     "format": "oxfmt --check",
     "format:fix": "oxfmt",
     "lint": "oxlint",
-    "test": "bun test --pass-with-no-tests",
+    "test": "bun test ./app ./lib ./scripts ./tests --pass-with-no-tests",
     "assistant-ui:drift-check": "bun scripts/assistant-ui-drift.ts",
     "opencode:acp-proof": "bun scripts/opencode-acp-proof.ts",
     "models:check": "bun scripts/models.ts check",
@@ -21,13 +21,13 @@
     "@agentclientprotocol/sdk": "1.7.0",
     "@ai-sdk/openai": "^4.0.66",
     "@assistant-ui/ai-sdk": "0.0.11",
-    "@assistant-ui/react": "0.15.25",
-    "@assistant-ui/react-markdown": "0.14.19",
+    "@assistant-ui/react": "0.15.31",
+    "@assistant-ui/react-markdown": "0.14.24",
     "@assistant-ui/react-opencode": "0.2.30",
     "@base-ui/react": "^1.8.0",
     "@opencode-ai/sdk": "1.18.35",
     "ai": "^7.0.101",
-    "assistant-stream": "0.3.49",
+    "assistant-stream": "0.3.54",
     "class-variance-authority": "^0.7.1",
     "cmdk": "^1.1.1",
     "cn": "^0.3.0",
@@ -54,9 +54,9 @@
     "typescript": "^7.0.2"
   },
   "overrides": {
-    "@assistant-ui/core": "0.3.26",
-    "@assistant-ui/store": "0.3.19",
-    "@assistant-ui/tap": "0.9.22",
-    "assistant-stream": "0.3.49"
+    "@assistant-ui/core": "0.3.31",
+    "@assistant-ui/store": "0.3.22",
+    "@assistant-ui/tap": "0.9.24",
+    "assistant-stream": "0.3.54"
   }
 }

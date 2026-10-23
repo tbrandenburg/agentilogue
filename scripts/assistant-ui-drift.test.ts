@@ -124,7 +124,9 @@ describe("assistant-ui copied-source drift check", () => {
     assert.deepEqual(
       checkedInManifest.files.map((file) => file.path),
       [
+        "components/assistant-ui/elements/attachment-state.ts",
         "components/assistant-ui/elements/attachment.aui.tsx",
+        "components/assistant-ui/elements/collapsible-root.tsx",
         "components/assistant-ui/elements/file.tsx",
         "components/assistant-ui/elements/follow-up-suggestions.aui.tsx",
         "components/assistant-ui/elements/image.tsx",
@@ -138,9 +140,13 @@ describe("assistant-ui copied-source drift check", () => {
         "components/assistant-ui/elements/tool-fallback.aui.tsx",
         "components/assistant-ui/elements/tool-group.aui.tsx",
         "components/assistant-ui/elements/tooltip-icon-button.tsx",
+        "components/assistant-ui/utils/href.ts",
+        "components/assistant-ui/utils/model-selection.ts",
+        "components/assistant-ui/utils/useIsomorphicLayoutEffect.ts",
       ],
     );
     assert.ok(checkedInManifest.files.every((file) => file.upstreamBlob.length === 40));
+    assert.ok(checkedInManifest.files.every((file) => file.approvedPatches.length === 0));
     assert.equal(
       checkedInManifest.files.some((file) => file.path.endsWith("session-controls.tsx")),
       false,
