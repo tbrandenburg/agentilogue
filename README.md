@@ -11,8 +11,8 @@ agentilogue is an open-source chat app built with [Next.js](https://nextjs.org/)
 ## What it does
 
 - Streams model responses through the Vercel AI SDK and OpenAI.
-- Offers opt-in local agent sessions through opencode ACP.
 - Offers opt-in Codex ACP text, tools, approvals and Stop using the same conversation surface.
+- Offers opt-in local agent sessions through opencode ACP.
 - Includes an experimental native opencode integration for local use.
 - Keeps chat UI separate from backend execution, with session tabs and provider-specific controls.
 
