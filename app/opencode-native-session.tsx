@@ -40,13 +40,12 @@ type Props = {
   session: NativeSession;
   hasOpenAIKey: boolean;
   hasOpenCodeApi: boolean;
+  hasCodexApi?: boolean;
   nativeOpenCode: OpenCodeNativeAvailability;
   isActive: boolean;
   onUpdate: (patch: Partial<NativeSession>) => void;
   onRunningChange: (id: string, running: boolean) => void;
 };
-
-const THREAD_COMPONENTS: ThreadComponents = AGENT_THREAD_COMPONENTS;
 
 export function OpenCodeNativeSessionRuntime(props: Props) {
   const [password, setPassword] = useState("");
@@ -192,6 +191,7 @@ function ConnectedOpenCodeSession({
   session,
   hasOpenAIKey,
   hasOpenCodeApi,
+  hasCodexApi,
   nativeOpenCode,
   isActive,
   onUpdate,
@@ -250,8 +250,8 @@ function ConnectedOpenCodeSession({
           config={session}
           hasOpenAIKey={hasOpenAIKey}
           hasOpenCodeApi={hasOpenCodeApi}
+          hasCodexApi={hasCodexApi}
           hasOpenCodeNative={nativeOpenCode.enabled}
-          nativeOpenCodeReason={undefined}
           providerControls={
             <NativeOpenCodeSessionControls
               config={session}
@@ -284,7 +284,7 @@ function ConnectedOpenCodeSession({
 }
 
 const NATIVE_THREAD_COMPONENTS: ThreadComponents = {
-  ...THREAD_COMPONENTS,
+  ...AGENT_THREAD_COMPONENTS,
   ToolFallback: NativeToolFallback,
 };
 

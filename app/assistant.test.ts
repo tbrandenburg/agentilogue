@@ -14,7 +14,7 @@ import {
   type RunObservation,
   type RunTool,
 } from "@/lib/agent/contracts/run";
-import { projectOpenCodeUpdate } from "@/lib/agent/opencode/update-projection";
+import { projectAcpUpdate as projectOpenCodeUpdate } from "@/lib/agent/acp/update-projection";
 import { applyAgentObservation, assistantMessageFromSnapshot } from "./opencode-projection";
 
 describe("opencode assistant-ui projection", () => {

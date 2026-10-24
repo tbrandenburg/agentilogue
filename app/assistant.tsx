@@ -30,6 +30,7 @@ type ChatSession = NativeSelection & {
   runTarget: RunTargetId | null;
   model?: string;
   nativeSessionId?: string;
+  codexProjectName?: string;
 };
 
 const THREAD_COMPONENTS: ThreadComponents = AGENT_THREAD_COMPONENTS;
@@ -51,6 +52,8 @@ const createSession = (
 });
 
 type AssistantProps = {
+  hasCodexApi?: boolean;
+  codexProjectName?: string;
   hasOpenAIKey: boolean;
   hasOpenCodeApi: boolean;
   nativeOpenCode: OpenCodeNativeAvailability;
@@ -60,6 +63,8 @@ type AssistantProps = {
 };
 
 export const Assistant = ({
+  hasCodexApi,
+  codexProjectName,
   hasOpenAIKey,
   hasOpenCodeApi,
   nativeOpenCode,
@@ -213,7 +218,8 @@ export const Assistant = ({
           {sessions.map((session) => (
             <Tabs.Panel key={session.id} value={session.id} keepMounted className="h-full">
               <SessionRuntime
-                session={session}
+                session={{ ...session, codexProjectName }}
+                hasCodexApi={hasCodexApi}
                 hasOpenAIKey={hasOpenAIKey}
                 hasOpenCodeApi={hasOpenCodeApi}
                 nativeOpenCode={nativeOpenCode}
@@ -230,6 +236,7 @@ export const Assistant = ({
 };
 
 type SessionRuntimeProps = {
+  hasCodexApi?: boolean;
   session: ChatSession;
   hasOpenAIKey: boolean;
   hasOpenCodeApi: boolean;
@@ -240,7 +247,7 @@ type SessionRuntimeProps = {
 };
 
 const SessionRuntime = (props: SessionRuntimeProps) =>
-  props.session.runTarget === "opencode:cli" ? (
+  props.session.runTarget === "opencode:cli" || props.session.runTarget === "codex:cli" ? (
     <OpenCodeSessionRuntime {...props} />
   ) : props.session.runTarget === "opencode:native" ? (
     <OpenCodeNativeSessionRuntime {...props} />
@@ -249,6 +256,7 @@ const SessionRuntime = (props: SessionRuntimeProps) =>
   );
 
 const AiSdkSessionRuntime = ({
+  hasCodexApi,
   session,
   hasOpenAIKey,
   hasOpenCodeApi,
@@ -280,6 +288,7 @@ const AiSdkSessionRuntime = ({
         config={session}
         hasOpenAIKey={hasOpenAIKey}
         hasOpenCodeApi={hasOpenCodeApi}
+        hasCodexApi={hasCodexApi}
         hasOpenCodeNative={nativeOpenCode.enabled}
         nativeOpenCodeReason={nativeOpenCode.enabled ? undefined : nativeOpenCode.reason}
         providerControls={

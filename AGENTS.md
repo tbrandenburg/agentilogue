@@ -73,6 +73,7 @@ See [ADR 0001](docs/decisions/0001-agent-integration-lanes.md) for the accepted 
 
 ## Lessons Learned
 
+- 2026-10-24: Pitfall: Isolating only the agent server left ACP children using the app's normal profile. Prevention: Give both app and agent processes disposable HOME/XDG paths in mixed-runtime proofs; never clean user-profile artifacts speculatively.
 - 2026-10-24: Pitfall: A timed-out Bun node:test fixture caused cascading registration errors. Prevention: Reproduce the first failing fixture independently and rerun the unchanged suite before treating later errors as separate regressions.
 - 2026-10-24: Pitfall: Deferring catalog drift to a follow-up left PR CI red. Prevention: Read the failing job's recovery instructions, apply its prescribed maintenance in the current PR, and verify CI before declaring completion.
 - 2026-10-23: Pitfall: Next's `.next/cache/.tsbuildinfo` retained stale dependency-type errors after an upgrade. Prevention: Invalidate that generated cache and repeat the production build before attributing diagnostics to the current installed packages.

@@ -44,6 +44,7 @@ export type OpenCodeSessionRuntimeProps = {
   readonly session: Session;
   readonly hasOpenAIKey: boolean;
   readonly hasOpenCodeApi: boolean;
+  readonly hasCodexApi?: boolean;
   readonly isActive: boolean;
   readonly onUpdate: (patch: Partial<Session>) => void;
   readonly onRunningChange: (id: string, running: boolean) => void;
@@ -53,10 +54,14 @@ export function OpenCodeSessionRuntime({
   session,
   hasOpenAIKey,
   hasOpenCodeApi,
+  hasCodexApi,
   isActive,
   onUpdate,
   onRunningChange,
 }: OpenCodeSessionRuntimeProps) {
+  const isCodex = session.runTarget === "codex:cli";
+  const label = isCodex ? "codex" : "opencode";
+  const endpoint = isCodex ? "/api/codex" : "/api/agent";
   const [messages, setMessages] = useState<ThreadMessageLike[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
@@ -72,33 +77,44 @@ export function OpenCodeSessionRuntime({
   );
   const runObserver = useCallback(
     (runId: string, onObservation: (observation: unknown) => void) =>
-      observeOpenCodeRun(runId, onObservation, (state) => {
-        setIsReconnecting(state === "reconnecting");
-        setIsDisconnected(state === "disconnected");
-      }),
-    [],
+      observeOpenCodeRun(
+        runId,
+        onObservation,
+        (state) => {
+          setIsReconnecting(state === "reconnecting");
+          setIsDisconnected(state === "disconnected");
+        },
+        fetch,
+        undefined,
+        endpoint,
+      ),
+    [endpoint],
   );
 
-  const publishProjection = useCallback((next: typeof projection.current) => {
-    if (!next) return;
-    projection.current = next;
-    const assistant = assistantMessageFromSnapshot(
-      next.snapshot,
-      next.messageId,
-      next.permissions,
-      next.createdAt,
-    );
-    setMessages((current) => {
-      const index = current.findIndex((message) => message.id === next.messageId);
-      if (index < 0) return [...current, assistant];
-      return current.map((message) => (message.id === next.messageId ? assistant : message));
-    });
-    if (next.snapshot.phase !== "running") {
-      activeRunId.current = null;
-      retryRun.current = null;
-      setIsRunning(false);
-    }
-  }, []);
+  const publishProjection = useCallback(
+    (next: typeof projection.current) => {
+      if (!next) return;
+      projection.current = next;
+      const assistant = assistantMessageFromSnapshot(
+        next.snapshot,
+        next.messageId,
+        next.permissions,
+        next.createdAt,
+        label,
+      );
+      setMessages((current) => {
+        const index = current.findIndex((message) => message.id === next.messageId);
+        if (index < 0) return [...current, assistant];
+        return current.map((message) => (message.id === next.messageId ? assistant : message));
+      });
+      if (next.snapshot.phase !== "running") {
+        activeRunId.current = null;
+        retryRun.current = null;
+        setIsRunning(false);
+      }
+    },
+    [label],
+  );
 
   const consumeObservation = useCallback(
     (messageId: string, createdAt: Date, permissions: Map<string, PermissionRecord>) =>
@@ -183,13 +199,13 @@ export function OpenCodeSessionRuntime({
       let runId: string | undefined;
       try {
         if (unsupportedInput || !text.trim())
-          throw new Error("opencode currently supports text prompts only.");
-        const start = await fetch("/api/agent", {
+          throw new Error(`${label} currently supports text prompts only.`);
+        const start = await fetch(endpoint, {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ conversationId: session.id, input: [{ type: "text", text }] }),
         });
-        if (!start.ok) throw new Error("opencode could not admit this run.");
+        if (!start.ok) throw new Error(`${label} could not admit this run.`);
         runId = StartAgentRunReceiptSchema.parse(await start.json()).runId;
         activeRunId.current = runId;
         const permissions = new Map<string, PermissionRecord>();
@@ -202,7 +218,7 @@ export function OpenCodeSessionRuntime({
         const failure =
           error instanceof Error && error.message.includes("text prompts")
             ? error.message
-            : "opencode could not complete this run. Its final status may be unknown.";
+            : `${label} could not complete this run. Its final status may be unknown.`;
         const partial =
           projection.current?.messageId === assistantId
             ? assistantMessageFromSnapshot(
@@ -210,6 +226,7 @@ export function OpenCodeSessionRuntime({
                 assistantId,
                 projection.current.permissions,
                 assistantCreatedAt,
+                label,
               )
             : undefined;
         const content =
@@ -244,7 +261,7 @@ export function OpenCodeSessionRuntime({
         }
       }
     },
-    [consumeObservation, runObserver, session.id],
+    [consumeObservation, endpoint, label, runObserver, session.id],
   );
 
   const onRetry = useCallback(() => {
@@ -257,13 +274,13 @@ export function OpenCodeSessionRuntime({
   const onCancel = useCallback(async () => {
     const runId = activeRunId.current;
     if (!runId) return;
-    const response = await fetch("/api/agent", {
+    const response = await fetch(endpoint, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ kind: "cancel", runId, conversationId: session.id }),
     });
-    if (!response.ok) throw new Error("opencode could not dispatch cancellation.");
-  }, [session.id]);
+    if (!response.ok) throw new Error(`${label} could not dispatch cancellation.`);
+  }, [endpoint, label, session.id]);
 
   const onRespondToToolApproval = useCallback(
     async ({ approvalId, approved, optionId }: RespondToToolApprovalOptions) => {
@@ -271,16 +288,16 @@ export function OpenCodeSessionRuntime({
       const current = projection.current;
       const permission = current?.permissions.get(approvalId);
       if (!runId || !current || !permission || !optionId)
-        throw new Error("This opencode permission is no longer available.");
+        throw new Error(`This ${label} permission is no longer available.`);
       if (!permission.request.options.some((option) => option.id === optionId))
-        throw new Error("opencode did not offer that permission choice.");
+        throw new Error(`${label} did not offer that permission choice.`);
       current.permissions.set(approvalId, {
         ...permission,
         dispatchedResponse: { approved, optionId },
       });
       publishProjection(current);
       try {
-        const result = await fetch("/api/agent", {
+        const result = await fetch(endpoint, {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
@@ -290,21 +307,21 @@ export function OpenCodeSessionRuntime({
             decision: { permissionId: approvalId, optionId },
           }),
         });
-        if (!result.ok) throw new Error("opencode could not dispatch this permission choice.");
+        if (!result.ok) throw new Error(`${label} could not dispatch this permission choice.`);
       } catch (error) {
         current.permissions.set(approvalId, { ...permission });
         publishProjection(current);
         throw error;
       }
     },
-    [publishProjection, session.id],
+    [endpoint, label, publishProjection, session.id],
   );
 
   const runtime = useExternalStoreRuntime<ThreadMessageLike>({
     messages,
     convertMessage: (message) => message,
     isRunning,
-    isSendDisabled: !hasOpenCodeApi,
+    isSendDisabled: isCodex ? !hasCodexApi : !hasOpenCodeApi,
     unstable_enableToolInvocations: false,
     onNew,
     onCancel,
@@ -315,7 +332,7 @@ export function OpenCodeSessionRuntime({
       <RunningStateReporter onRunningChange={reportRunning} />
       {isReconnecting ? (
         <p role="status" className="px-4 py-1 text-xs text-amber-700 dark:text-amber-300">
-          opencode observation disconnected; reconnecting. The run remains active and can still be
+          {label} observation disconnected; reconnecting. The run remains active and can still be
           stopped.
         </p>
       ) : null}
@@ -325,7 +342,7 @@ export function OpenCodeSessionRuntime({
           className="flex items-center gap-2 px-4 py-1 text-xs text-amber-700 dark:text-amber-300"
         >
           <span>
-            opencode observation disconnected. The run remains active and can still be stopped.
+            {label} observation disconnected. The run remains active and can still be stopped.
           </span>
           <button type="button" className="underline" onClick={onRetry}>
             Retry
@@ -336,6 +353,7 @@ export function OpenCodeSessionRuntime({
         config={session}
         hasOpenAIKey={hasOpenAIKey}
         hasOpenCodeApi={hasOpenCodeApi}
+        hasCodexApi={hasCodexApi}
         onChange={onUpdate}
       >
         <Thread components={AGENT_THREAD_COMPONENTS} autoFocus={isActive} />

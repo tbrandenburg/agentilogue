@@ -14,11 +14,13 @@ export type SessionControlsConfig = NativeSelection & {
   runTarget: RunTargetId | null;
   model?: string;
   nativeSessionId?: string;
+  codexProjectName?: string;
 };
 type Props = {
   config: SessionControlsConfig;
   hasOpenAIKey: boolean;
   hasOpenCodeApi: boolean;
+  hasCodexApi?: boolean;
   hasOpenCodeNative?: boolean;
   nativeOpenCodeReason?: string;
   providerControls?: ReactNode;
@@ -112,6 +114,7 @@ export function SessionControls({
   config,
   hasOpenAIKey,
   hasOpenCodeApi,
+  hasCodexApi,
   hasOpenCodeNative,
   nativeOpenCodeReason,
   providerControls,
@@ -123,7 +126,9 @@ export function SessionControls({
   const projectName =
     config.runTarget === "opencode:cli" || config.runTarget === "opencode:native"
       ? config.openCodeProjectName
-      : config.projectName;
+      : config.runTarget === "codex:cli"
+        ? (config.codexProjectName ?? "project")
+        : config.projectName;
 
   return (
     <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1">
@@ -137,7 +142,9 @@ export function SessionControls({
         hint={
           hasOpenCodeNative === false && nativeOpenCodeReason
             ? `opencode · Native unavailable: ${nativeOpenCodeReason}`
-            : undefined
+            : !hasCodexApi
+              ? "codex requires trusted-local server configuration, a pinned executable and a server-owned API key."
+              : undefined
         }
         formatValue={(value) =>
           value === "none"
@@ -165,7 +172,9 @@ export function SessionControls({
                   ? !hasOpenCodeApi
                   : runTarget.id === "opencode:native"
                     ? !hasOpenCodeNative
-                    : true
+                    : runTarget.id === "codex:cli"
+                      ? !hasCodexApi
+                      : true
             }
           >
             {runTarget.label}

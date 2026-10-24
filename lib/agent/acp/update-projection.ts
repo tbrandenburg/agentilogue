@@ -1,15 +1,15 @@
 import * as acp from "@agentclientprotocol/sdk";
 import type { AgentRunEvent, RunMessage, RunPart, RunTool } from "../contracts/run";
 
-export interface OpenCodeProjectionState {
+export interface AcpProjectionState {
   readonly fallbackMessageId: string;
   readonly messages: Map<string, RunMessage>;
   readonly tools: Map<string, RunTool>;
   readonly parts: RunPart[];
 }
 
-export function projectOpenCodeUpdate(
-  state: OpenCodeProjectionState,
+export function projectAcpUpdate(
+  state: AcpProjectionState,
   update: acp.SessionUpdate,
   publish: (event: AgentRunEvent) => void,
 ): void {

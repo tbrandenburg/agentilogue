@@ -5,7 +5,7 @@ import {
   useExternalStoreRuntime,
   type ThreadMessageLike,
 } from "@assistant-ui/react";
-import { createElement, type ReactNode } from "react";
+import { Children, createElement, isValidElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { AiSdkSessionControls } from "@/components/assistant-ui/elements/ai-sdk-session-controls";
 import { NativeOpenCodeSessionControls } from "@/components/assistant-ui/elements/native-opencode-session-controls";
@@ -14,6 +14,11 @@ import {
   SessionControlsProvider,
 } from "@/components/assistant-ui/elements/session-controls-slot";
 import type { SessionControlsConfig } from "@/components/assistant-ui/elements/session-controls";
+import {
+  Option,
+  Picker,
+  SessionControls,
+} from "@/components/assistant-ui/elements/session-controls";
 import type { NativeCatalog } from "@/lib/native-selection";
 
 type RenderOptions = {
@@ -86,6 +91,53 @@ const nativeControls = (options: Partial<RenderOptions> = {}) =>
   });
 
 describe("provider-local session controls render state", () => {
+  it("enables codex only when configured in a fresh native session and preserves native hints", () => {
+    for (const enabled of [true, false]) {
+      function Inspect() {
+        const tree = SessionControls({
+          config: {
+            projectName: "test-project",
+            openCodeProjectName: "test-project",
+            runTarget: "opencode:native",
+          },
+          hasOpenAIKey: true,
+          hasOpenCodeApi: true,
+          hasCodexApi: enabled,
+          hasOpenCodeNative: false,
+          nativeOpenCodeReason: "Native server not configured",
+          onChange: () => {},
+        });
+        const picker = Children.toArray(tree.props.children).find(
+          (child) => isValidElement(child) && child.type === Picker,
+        );
+        assert.ok(isValidElement<Parameters<typeof Picker>[0]>(picker));
+        assert.equal(picker.props.disabled, false);
+        assert.equal(
+          picker.props.hint,
+          "opencode · Native unavailable: Native server not configured",
+        );
+        const codex = Children.toArray(picker.props.children).find(
+          (child) =>
+            isValidElement<Parameters<typeof Option>[0]>(child) &&
+            child.type === Option &&
+            child.props.value === "codex:cli",
+        );
+        assert.ok(isValidElement<Parameters<typeof Option>[0]>(codex));
+        assert.equal(codex.props.disabled, !enabled);
+        return tree;
+      }
+      function Harness() {
+        const runtime = useExternalStoreRuntime<ThreadMessageLike>({
+          messages: [],
+          convertMessage: (message) => message,
+          onNew: async () => {},
+        });
+        return createElement(AssistantRuntimeProvider, { runtime }, createElement(Inspect));
+      }
+      assert.match(renderToStaticMarkup(createElement(Harness)), /Run with/);
+    }
+  });
+
   it("requires an assistant runtime around provider-specific controls", () => {
     const controls = createElement(AiSdkSessionControls, {
       config: {

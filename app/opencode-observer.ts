@@ -17,12 +17,13 @@ export async function observeOpenCodeRun(
   request: typeof fetch = fetch,
   wait: (milliseconds: number) => Promise<void> = (milliseconds) =>
     new Promise((resolve) => setTimeout(resolve, milliseconds)),
+  endpoint = "/api/agent",
 ): Promise<void> {
   let attempt = 0;
   while (true) {
     const controller = new AbortController();
     try {
-      const response = await request(`/api/agent?runId=${encodeURIComponent(runId)}`, {
+      const response = await request(`${endpoint}?runId=${encodeURIComponent(runId)}`, {
         signal: controller.signal,
       });
       if (response.status === 403 || response.status === 404) throw new PermanentObserverError();
