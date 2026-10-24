@@ -33,6 +33,9 @@ flowchart TB
     UI["AGENTILOGUE Thread"] --> ROOT["assistant-ui AssistantRuntime"]
     ROOT --> SDK["useChatRuntime · implemented"]
     SDK --> CHAT["/api/chat → AI SDK → OpenAI"]
+    ROOT --> CODEX["useExternalStoreRuntime · codex"]
+    CODEX --> CODEXAPI["/api/codex · admitted runs / observation / controls"]
+    CODEXAPI --> CODEXPORT["AgentProvider → Codex ACP"]
     ROOT --> ACP["useExternalStoreRuntime · implemented"]
     ACP --> API["/api/agent · admitted runs / observation / controls"]
     API --> PORT["AgentProvider → opencode ACP"]
@@ -60,7 +63,7 @@ Do not add a generic `AgentService`, `AgentRegistry` or parallel event represent
 
 ## Target agent integrations
 
-Likely future agent targets include Pi, Codex, Claude Code and GitHub Copilot, in addition to opencode. Select each concrete integration using [ADR 0001](decisions/0001-agent-integration-lanes.md): first assess maintained assistant-ui adapters, then the agent's suitable native SDK/protocol and required security boundary. ACP is one option, **not** the default interface every agent must support.
+Codex ACP is an optional implemented lane alongside opencode; see [setup and limitations](/docs/codex-acp.md). Likely future targets include Pi, Claude Code and GitHub Copilot. Select each concrete integration using [ADR 0001](decisions/0001-agent-integration-lanes.md): first assess maintained assistant-ui adapters, then the agent's suitable native SDK/protocol and required security boundary. ACP is one option, **not** the default interface every agent must support.
 
 Do not force a native SDK or a protocol adapter into `AgentProvider` merely to share a TypeScript port. If two backends genuinely need the same run/admission/observation/control interface, reuse the existing port; if an upstream runtime provides a better direct integration, keep it native.
 
