@@ -1,0 +1,25 @@
+name: assistant-ui upstream
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  upstream-drift:
+    name: assistant-ui upstream drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: make assistant-ui-upstream-check
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: Explain upstream drift failures
+        if: ${{ failure() }}
+        run: |
+          echo "assistant-ui upstream check failed. PR owner: review the reported published-tag changes and resolve them in this PR; see docs/assistant-ui-upgrades.md. Do not bypass this check or blindly upgrade native adapters."

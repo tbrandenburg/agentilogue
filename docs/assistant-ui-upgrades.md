@@ -19,6 +19,56 @@ The copied elements are sourced from `assistant-ui/assistant-ui` at
 Each manifest entry records its exact registry path and Git blob SHA. Do not
 refresh these files from the live registry or `main`.
 
+## Released upstream drift gate
+
+Every pull request also runs the networked, read-only
+`make assistant-ui-upstream-check` (`bun run assistant-ui:upstream-check`),
+with a manual `workflow_dispatch` entry point. This is separate from the offline
+copied-source digest gate: it checks the newest published stable
+`@assistant-ui/react` GitHub Release, not whichever unrelated package was most
+recently released in the monorepo. The checker paginates release results,
+semantically sorts stable versions, resolves lightweight or annotated tags to
+immutable commits, and verifies npm's exact package name/version, repository,
+and `packages/react` publication identity. It does not consult `main` or the
+mutable deployed registry.
+
+The checker compares every manifest source path and its Git blob against the
+pinned tag, reconciles each source with the tagged
+`apps/registry/src/registry.ts` declarations (unrecognized or missing entries
+fail closed), and compares published dependency/peer ranges for the React
+package and every installed `@assistant-ui/*` package against their versions in
+the same pinned and candidate tagged trees. Package metadata is read from the
+exact npm versions and must identify its corresponding monorepo package
+directory; missing manifests or unverifiable publications fail closed. Git
+blob SHA changes alone do not prove a functional change: both source versions
+are normalized with the manifest-pinned Oxfmt. Formatting-only changes and version-only advances are
+informational; substantive copied-source, registry/dependency, or relevant
+constraint changes produce `DRIFT`. Incomplete provenance, missing required
+data, malformed responses, API failures and formatter failures produce
+`ERROR`. Both statuses exit nonzero. The report is deterministic and contains
+tagged source links and same-PR remediation; long item lists are summarized
+deterministically and `--json` is available for machine consumers.
+
+To resolve a reported drift, review the tagged upstream diff and package
+compatibility first. If accepted, update exact package pins/overrides and copied
+sources together, then update manifest provenance. Run `bun install
+--frozen-lockfile`, `bun run assistant-ui:drift-check`, formatting, lint,
+tests, typecheck, build, and the relevant AI SDK, ACP, and native opencode
+runtime/E2E checks before rerunning the upstream gate. The compatibility and
+cross-runtime acceptance evidence from [PR #52](https://github.com/tbrandenburg/agentilogue/pull/52)
+is a reference, not a substitute for validating the actual upgrade. A newer
+adapter version is not automatically required when the existing adapter is
+compatible. There is no automatic source or lockfile update and no waiver
+framework; unresolved upstream changes remain visible for a reviewed same-PR
+resolution.
+
+The workflow only adds a failing check; it cannot configure repository
+protection. A maintainer must add the exact **`assistant-ui upstream drift`**
+job context as a required status check on `main`'s ruleset/branch protection.
+Until that administrator setting is verified, do not claim merge blocking is
+enforced. The existing `Models` and offline `assistant-ui copied-source drift`
+checks remain independent.
+
 The exact package baseline is `@assistant-ui/react@0.15.31`,
 `@assistant-ui/ai-sdk@0.0.11`, `@assistant-ui/react-markdown@0.14.24`, and
 `@assistant-ui/next@0.0.24`.

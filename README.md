@@ -94,7 +94,7 @@ Planned CLI targets include opencode, pi, codex, claude code, and github copilot
 
 ## Architecture
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the current and planned integration boundaries and [docs/assistant-ui-upgrades.md](docs/assistant-ui-upgrades.md) for the pinned released-source baseline and copied-component drift checks. See [AGENTS.md](AGENTS.md) for project principles and development guidance.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the current and planned integration boundaries and [docs/assistant-ui-upgrades.md](docs/assistant-ui-upgrades.md) for the pinned released-source baseline, offline copied-component check, and networked upstream release-drift gate. See [AGENTS.md](AGENTS.md) for project principles and development guidance.
 
 ## Contributing
 

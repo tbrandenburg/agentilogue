@@ -11,6 +11,7 @@
     "lint": "oxlint",
     "test": "bun test ./app ./lib ./scripts ./tests --pass-with-no-tests",
     "assistant-ui:drift-check": "bun scripts/assistant-ui-drift.ts",
+    "assistant-ui:upstream-check": "bun scripts/assistant-ui-upstream-check.ts",
     "opencode:acp-proof": "bun scripts/opencode-acp-proof.ts",
     "models:check": "bun scripts/models.ts check",
     "models:sync": "bun scripts/models.ts sync",
