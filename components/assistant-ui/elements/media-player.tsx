@@ -134,7 +134,7 @@ export function AudioPlayer({
           <PlayIcon aria-hidden className="ml-0.5 size-4" />
         )}
       </button>
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+      <div className="flex min-w-0 grow basis-16 flex-col gap-1.5">
         <span className="truncate text-[13.5px] font-medium">{displayTitle}</span>
         <input
           type="range"
@@ -155,8 +155,8 @@ export function AudioPlayer({
           className="accent-foreground w-full cursor-pointer disabled:cursor-default"
         />
       </div>
-      <span className={cn(mono, "text-foreground/45 shrink-0 tabular-nums")}>
-        {formatDuration(currentTime)} / {durationLabel}
+      <span className={cn(mono, "text-muted-foreground tabular-nums")}>
+        {formatDuration(currentTime)}&nbsp;/ {durationLabel}
       </span>
       <audio
         ref={audioRef}
@@ -172,7 +172,7 @@ export function AudioPlayer({
         onError={() => update({ hasError: true, playing: false })}
       />
       {hasError ? (
-        <span role="alert" className="text-foreground/45 shrink-0 text-xs">
+        <span role="alert" className="text-muted-foreground text-xs">
           Can't play this audio
         </span>
       ) : null}
@@ -229,7 +229,7 @@ export function VideoPlayer({
             <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium">{title}</span>
           ) : null}
           {duration !== undefined ? (
-            <span className={cn(mono, "text-foreground/45 shrink-0 tabular-nums")}>
+            <span className={cn(mono, "text-muted-foreground shrink-0 tabular-nums")}>
               {formatDuration(duration)}
             </span>
           ) : null}

@@ -1,0 +1,55 @@
+{
+  "versions": {
+    "@assistant-ui/react": "0.15.31",
+    "@assistant-ui/ai-sdk": "0.0.11",
+    "@assistant-ui/react-opencode": "0.2.30",
+    "@opencode-ai/sdk": "1.18.35",
+    "playwright": "1.63.0",
+    "next": "16.3.8",
+    "opencode-cli": "1.18.35",
+    "browser": "154.0.8037.92"
+  },
+  "mode": "production",
+  "results": [
+    {
+      "name": "None send policy/no mutation, narrow composer keyboard/layout, native rejected auth",
+      "status": "WORKING",
+      "at": "2026-10-23T20:16:39.522Z"
+    },
+    {
+      "name": "AI SDK suggestion once, effective model, real image send, partial stream, switch while running and cancel",
+      "status": "WORKING",
+      "at": "2026-10-23T20:16:49.851Z"
+    },
+    {
+      "name": "ACP real text, approved write/receipt, cancellation and control ownership",
+      "status": "WORKING",
+      "at": "2026-10-23T20:17:24.135Z"
+    },
+    {
+      "name": "Native authenticated catalog/selection, approved write/receipt, active tool cancellation, password re-entry/session/server title restoration without resend",
+      "status": "WORKING",
+      "at": "2026-10-23T20:17:39.346Z"
+    },
+    {
+      "name": "Pi stream/queue/host request: unavailable integration",
+      "status": "N/A",
+      "at": "2026-10-23T20:17:39.662Z"
+    },
+    {
+      "name": "Voice/dictation: runtime does not advertise support",
+      "status": "N/A",
+      "at": "2026-10-23T20:17:39.708Z"
+    },
+    {
+      "name": "Long-outage same-mount recovery: existing limitation, not retested or claimed fixed",
+      "status": "NOT TESTED",
+      "at": "2026-10-23T20:17:39.708Z"
+    },
+    {
+      "name": "Owned service groups/descendants stopped; proof ports free",
+      "status": "WORKING",
+      "at": "2026-10-23T20:17:41.949Z"
+    }
+  ]
+}

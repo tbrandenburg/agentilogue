@@ -29,7 +29,7 @@ import {
 } from "./opencode-projection";
 
 export const AGENT_THREAD_COMPONENTS: ThreadComponents = {
-  ComposerActionLeft: AgentilogueSessionControlsSlot,
+  ComposerExtra: AgentilogueSessionControlsSlot,
 };
 
 type Session = {

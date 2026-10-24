@@ -5,7 +5,7 @@ import {
   ComposerAttachments,
   UserMessageAttachments,
 } from "@/components/assistant-ui/elements/attachment.aui";
-import { File } from "@/components/assistant-ui/elements/file";
+import { File, getFileHref } from "@/components/assistant-ui/elements/file";
 import { ThreadFollowupSuggestions } from "@/components/assistant-ui/elements/follow-up-suggestions.aui";
 import { Image } from "@/components/assistant-ui/elements/image";
 import { MarkdownText } from "@/components/assistant-ui/elements/markdown-text";
@@ -59,6 +59,7 @@ import {
   PhoneIcon,
   RefreshCwIcon,
   SquareIcon,
+  PlayIcon,
   ThumbsDownIcon,
   ThumbsUpIcon,
 } from "lucide-react";
@@ -74,6 +75,9 @@ import {
 
 export type ThreadGroupPart = MessagePrimitive.GroupedParts.GroupPart;
 
+const shouldShowComposerResume = (s: AssistantState) =>
+  !!s.thread.canResume && s.composer.type === "thread" && s.composer.isEmpty;
+
 const reasoningDuration = (timing: ThreadGroupPart["timing"]) =>
   timing?.completedAt === undefined
     ? undefined
@@ -87,15 +91,17 @@ const reasoningDuration = (timing: ThreadGroupPart["timing"]) =>
  * `ToolFallback`. When `TaskGroup` is set, tool calls that carry a nested
  * conversation and have no registered UI render through it instead of the
  * tool group; without it they render like any other tool call.
+ * `ComposerExtra` renders in the composer's action row beside the attach
+ * button.
  */
 export type ThreadComponents = {
   AssistantMessage?: ComponentType | undefined;
   Welcome?: ComponentType | undefined;
-  ComposerActionLeft?: ComponentType | undefined;
   ToolFallback?: ToolCallMessagePartComponent | undefined;
   ToolGroup?: ComponentType<PropsWithChildren<{ group: ThreadGroupPart }>> | undefined;
   ReasoningGroup?: ComponentType<PropsWithChildren<{ group: ThreadGroupPart }>> | undefined;
   TaskGroup?: ComponentType<{ group: ThreadGroupPart }> | undefined;
+  ComposerExtra?: ComponentType | undefined;
 };
 
 const messageGroupBy = groupPartByType({
@@ -479,7 +485,7 @@ const Composer: FC<{ autoFocus: boolean }> = ({ autoFocus }) => {
 };
 
 const ComposerAction: FC = () => {
-  const { ComposerActionLeft } = useContext(ThreadComponentsContext);
+  const { ComposerExtra } = useContext(ThreadComponentsContext);
   // The stop control only cancels the send while no run it could stop is going.
   const isSending = useAuiState(
     (s) =>
@@ -488,10 +494,10 @@ const ComposerAction: FC = () => {
 
   return (
     <div className="aui-composer-action-wrapper relative flex items-center justify-between">
-      {ComposerActionLeft ? (
-        <div className="flex min-w-0 flex-1 items-center gap-1">
+      {ComposerExtra ? (
+        <div className="aui-composer-action-start flex items-center gap-1.5">
           <ComposerAddAttachment />
-          <ComposerActionLeft />
+          <ComposerExtra />
         </div>
       ) : (
         <ComposerAddAttachment />
@@ -531,8 +537,9 @@ const ComposerAction: FC = () => {
         </AuiIf>
         <AuiIf
           condition={(s) =>
-            !s.composer.canCancel ||
-            (s.thread.voice !== undefined && s.composer.submission === undefined)
+            (!s.composer.canCancel ||
+              (s.thread.voice !== undefined && s.composer.submission === undefined)) &&
+            !shouldShowComposerResume(s)
           }
         >
           <ComposerPrimitive.Send asChild>
@@ -548,6 +555,21 @@ const ComposerAction: FC = () => {
               <ArrowUpIcon className="aui-composer-send-icon size-4" />
             </TooltipIconButton>
           </ComposerPrimitive.Send>
+        </AuiIf>
+        <AuiIf condition={shouldShowComposerResume}>
+          <ComposerPrimitive.Resume asChild>
+            <TooltipIconButton
+              tooltip="Resume generating"
+              side="bottom"
+              type="button"
+              variant="default"
+              size="icon"
+              className="aui-composer-resume size-7 rounded-full"
+              aria-label="Resume generating"
+            >
+              <PlayIcon className="aui-composer-resume-icon size-4" />
+            </TooltipIconButton>
+          </ComposerPrimitive.Resume>
         </AuiIf>
         <AuiIf
           condition={(s) =>
@@ -650,7 +672,7 @@ const AssistantMessage: FC = () => {
               case "file":
                 return (
                   <div data-slot="aui_assistant-message-file" className="py-1">
-                    <File {...part} />
+                    <MessageFile {...part} />
                   </div>
                 );
               case "image":
@@ -752,9 +774,24 @@ const AssistantActionBar: FC = () => {
   );
 };
 
+const MessageFile: FileMessagePartComponent = (part) => {
+  const image = part.mimeType.toLowerCase().startsWith("image/")
+    ? getFileHref(part.data, part.mimeType, part.sourceType)
+    : null;
+  if (!image) return <File {...part} />;
+  return (
+    <Image
+      type="image"
+      image={image}
+      status={part.status}
+      {...(part.filename !== undefined && { filename: part.filename })}
+    />
+  );
+};
+
 const UserFilePart: FileMessagePartComponent = (part) => (
   <div data-slot="aui_user-message-file" className="py-1">
-    <File {...part} />
+    <MessageFile {...part} />
   </div>
 );
 

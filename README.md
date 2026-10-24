@@ -22,6 +22,8 @@ The ACP lane exposes shared Project and Run with controls only; it does not offe
 
 The checked-in models.dev catalog is provider-independent metadata grouped by canonical creator/lab IDs. Repository-owned **Preconfigured** tiers provide a compact fast path, while the broader catalog remains available for selection where the active execution path supports it. Check catalog freshness with `bun run models:check`; after reviewing drift, update it with `bun run models:sync`.
 
+If PR CI reports model-catalog drift, refresh the catalog in that PR, preserve tier choices, and rerun `bun run models:check` before pushing. Do not bypass the maintenance check.
+
 ## Quick start
 
 You’ll need [Bun](https://bun.sh/). An [OpenAI API key](https://platform.openai.com/api-keys) is needed for the AI SDK path. opencode ACP is separately optional for its trusted-local path.
@@ -92,7 +94,7 @@ Planned CLI targets include opencode, pi, codex, claude code, and github copilot
 
 ## Architecture
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the current and planned integration boundaries and [docs/assistant-ui-upgrades.md](docs/assistant-ui-upgrades.md) for the pinned Thread baseline and local patchset. See [AGENTS.md](AGENTS.md) for project principles and development guidance.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the current and planned integration boundaries and [docs/assistant-ui-upgrades.md](docs/assistant-ui-upgrades.md) for the pinned released-source baseline and copied-component drift checks. See [AGENTS.md](AGENTS.md) for project principles and development guidance.
 
 ## Contributing
 
