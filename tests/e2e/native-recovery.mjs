@@ -108,6 +108,11 @@ try {
   assert.equal(health.version, "1.18.35");
   const appEnv = {
     ...process.env,
+    HOME: serverEnv.HOME,
+    XDG_CONFIG_HOME: serverEnv.XDG_CONFIG_HOME,
+    XDG_DATA_HOME: serverEnv.XDG_DATA_HOME,
+    XDG_STATE_HOME: serverEnv.XDG_STATE_HOME,
+    XDG_CACHE_HOME: serverEnv.XDG_CACHE_HOME,
     OPENAI_API_KEY: "",
     OPENCODE_CWD: project,
     OPENCODE_NATIVE_ENABLED: "1",
@@ -118,8 +123,7 @@ try {
     process.execPath,
     [
       resolve("node_modules/next/dist/bin/next"),
-      "dev",
-      "--webpack",
+      "start",
       "--hostname",
       "127.0.0.1",
       "--port",
@@ -155,18 +159,34 @@ try {
         connection: response.connectionId,
         protocol: response.protocol,
         elapsed: Date.now() - entry.at,
+        timing: response.timing,
       });
   });
   cdp.on("Network.loadingFailed", ({ requestId, errorText }) => {
     const entry = network.find((item) => item.id === requestId);
     if (entry) entry.failure = errorText;
   });
+  cdp.on("Network.loadingFinished", ({ requestId }) => {
+    const entry = network.find((item) => item.id === requestId);
+    if (entry) entry.finished = Date.now() - entry.at;
+  });
   const panel = () => page.getByRole("tabpanel").filter({ visible: true });
   async function connect() {
     assert.equal(await panel().getByLabel("opencode server password").inputValue(), "");
     await panel().getByLabel("opencode server password").fill(password);
     await panel().getByRole("button", { name: "Connect to opencode", exact: true }).click();
-    await panel().getByRole("button", { name: "Disconnect", exact: true }).waitFor();
+    try {
+      await panel().getByRole("button", { name: "Disconnect", exact: true }).waitFor();
+    } catch (error) {
+      console.log(
+        "connect failure",
+        JSON.stringify({
+          alerts: await panel().getByRole("alert").allTextContents(),
+          recent: network.filter((entry) => entry.at >= Date.now() - 30000),
+        }),
+      );
+      throw error;
+    }
     await panel().getByRole("textbox").and(page.locator(":enabled")).waitFor({ timeout: 35000 });
   }
   async function native() {
@@ -229,10 +249,11 @@ try {
   }
   for (const outage of [2000, 16000]) {
     const marker = `RECOVERY_PARTIAL_${outage}`;
+    const partial = new RegExp(`^${marker}\\.?$`);
     await prompt(
       `Say ${marker} first, then use the bash tool to run sleep 90, then say FINISHED. Do not skip the tool.`,
     );
-    await panel().getByText(marker, { exact: true }).waitFor({ timeout: 60000 });
+    await panel().getByText(partial).waitFor({ timeout: 60000 });
     const saved = await mapping();
     const sessionId = saved.sessions.find(
       (session) => session.id === saved.activeId,
@@ -352,36 +373,40 @@ try {
       }),
     );
     assert.equal(prompts(), before, "no outage/recheck prompt resend");
-    if (outage === 16000 || !sameMountRecovery) {
-      await page.reload();
-      await connect();
-      await panel().getByText(marker, { exact: true }).waitFor({ timeout: 30000 });
-      await panel().getByRole("button", { name: "Recheck status", exact: true }).click();
-      await panel()
-        .getByText(/Outcome unknown.*Retrying the prompt can repeat side effects/)
-        .waitFor();
-      const recovered = network
-        .filter((entry) => entry.path.endsWith("/message") && entry.status === 200)
-        .at(-1);
-      console.log("restored history HTTP 200 elapsed", recovered?.elapsed);
-      assert.deepEqual(await mapping(), saved);
-      const storage = await page.evaluate(() =>
-        JSON.stringify({ ...sessionStorage, ...localStorage }),
-      );
-      assert.ok(!storage.includes(password), "password absent from browser storage");
-      assert.equal(prompts(), before, "no reload prompt resend");
-      console.log("PASS reload/password/session/transcript/unknown/no resend", outage);
-      // Reload restores mappings, but each mounted app tab still needs its own password.
-      await page.getByRole("tab").first().click();
-      await connect();
-      await page.getByRole("tab").nth(1).click();
-      assert.equal(
-        await page
-          .getByRole("button", { name: "Disconnect", exact: true, includeHidden: true })
-          .count(),
-        2,
-      );
-    }
+    // Exercise the supported fallback even when this run happened to reconnect in place.
+    await page.reload();
+    await connect();
+    await panel().getByText(partial).waitFor({ timeout: 30000 });
+    await panel().getByRole("button", { name: "Recheck status", exact: true }).click();
+    await panel()
+      .getByText(/Outcome unknown.*Retrying the prompt can repeat side effects/)
+      .waitFor();
+    const recovered = network
+      .filter((entry) => entry.path.endsWith("/message") && entry.status === 200)
+      .at(-1);
+    console.log("restored history HTTP 200 elapsed", recovered?.elapsed);
+    assert.deepEqual(await mapping(), saved);
+    const storage = await page.evaluate(() =>
+      JSON.stringify({ ...sessionStorage, ...localStorage }),
+    );
+    assert.ok(!storage.includes(password), "password absent from browser storage");
+    assert.equal(prompts(), before, "no reload prompt resend");
+    console.log("PASS reload/password/session/transcript/unknown/no resend", outage);
+    // Reload restores mappings, but each mounted app tab still needs its own password.
+    await page.getByRole("tab").first().click();
+    await connect();
+    await panel()
+      .getByText(/^RECOVERY_NORMAL_A\.?$/)
+      .waitFor({ timeout: 30000 });
+    await page.getByRole("tab").nth(1).click();
+    assert.equal(
+      await page
+        .getByRole("button", { name: "Disconnect", exact: true, includeHidden: true })
+        .count(),
+      2,
+    );
+    assert.equal(prompts(), before, "neither restored tab resends a prompt");
+    console.log("PASS both restored tabs connected with retained history and no resend", outage);
   }
   console.log(
     "network counts",

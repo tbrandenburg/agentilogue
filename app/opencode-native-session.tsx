@@ -21,6 +21,7 @@ import { NativeOpenCodeSessionControls } from "@/components/assistant-ui/element
 import type { OpenCodeNativeAvailability } from "@/lib/opencode-native-config";
 import { isOpenCodeNativeOriginAllowed } from "@/lib/opencode-native-config";
 import { createOpenCodeRunGuard } from "@/lib/opencode-native-run-guard";
+import { configureOpenCodeEvents } from "@/lib/opencode-native-events";
 import { discoverNativeCatalog, nativeSelectionAvailable } from "@/lib/native-selection";
 import type { NativeCatalog, NativeSelection } from "@/lib/native-selection";
 import type { RunTargetId } from "@/lib/run-target";
@@ -180,11 +181,13 @@ function createAuthenticatedClient(
 ) {
   const bytes = new TextEncoder().encode(`opencode:${password}`);
   const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join("");
-  return createOpencodeClient({
-    baseUrl,
-    headers: { Authorization: `Basic ${btoa(binary)}` },
-    fetch: fetcher,
-  });
+  return configureOpenCodeEvents(
+    createOpencodeClient({
+      baseUrl,
+      headers: { Authorization: `Basic ${btoa(binary)}` },
+      fetch: fetcher,
+    }),
+  );
 }
 
 function ConnectedOpenCodeSession({
