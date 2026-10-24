@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+import formatter from "oxfmt/package.json";
 
 type Manifest = {
   formatter: string;
@@ -19,26 +19,16 @@ type Manifest = {
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const manifestPath = join(root, "docs/assistant-ui-source.json");
-const formatter = join(root, "node_modules/.bin/oxfmt");
 
 export const formattedDigest = async (source: string, filename: string): Promise<string> => {
-  const temporaryDirectory = await mkdtemp(join(tmpdir(), "assistant-ui-drift-"));
-  const temporaryFile = join(temporaryDirectory, filename.split("/").at(-1) ?? "source.tsx");
-
-  try {
-    await writeFile(temporaryFile, source);
-    const result = spawnSync(formatter, ["--write", temporaryFile], {
-      cwd: root,
-      encoding: "utf8",
-    });
-    if (result.status !== 0) {
-      throw new Error(`oxfmt failed for ${filename}: ${result.stderr || result.stdout}`);
-    }
-    const formatted = await readFile(temporaryFile);
-    return createHash("sha256").update(formatted).digest("hex");
-  } finally {
-    await rm(temporaryDirectory, { recursive: true, force: true });
+  const oxfmt = await import("oxfmt");
+  const result = await oxfmt.format(filename, source);
+  if (result.errors.length) {
+    throw new Error(
+      `oxfmt failed for ${filename}: ${result.errors.map((error) => error.message).join("\n")}`,
+    );
   }
+  return createHash("sha256").update(result.code).digest("hex");
 };
 
 export const sourceDiff = (cwd: string, filename: string, baseRef?: string): string => {
@@ -96,12 +86,8 @@ export const checkFile = async (
 
 const run = async (): Promise<number> => {
   const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as Manifest;
-  const version = spawnSync(formatter, ["--version"], { cwd: root, encoding: "utf8" });
-  if (
-    version.status !== 0 ||
-    !version.stdout.includes(manifest.formatter.split("@").at(-1) ?? "")
-  ) {
-    console.error(`Expected ${manifest.formatter}; got ${version.stdout || version.stderr}`);
+  if (manifest.formatter !== `oxfmt@${formatter.version}`) {
+    console.error(`Expected ${manifest.formatter}; got oxfmt@${formatter.version}`);
     return 1;
   }
   const results = await Promise.all(
