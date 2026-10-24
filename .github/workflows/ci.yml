@@ -42,6 +42,18 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run typecheck
 
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: make build
+
   assistant-ui-drift:
     name: assistant-ui copied-source drift
     runs-on: ubuntu-latest

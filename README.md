@@ -91,9 +91,13 @@ Enter the server password in the selected chat when prompted. It is held in memo
 Before larger changes, read [AGENTS.md](AGENTS.md) and [the architecture guide](docs/ARCHITECTURE.md). Run the project checks with:
 
 ```bash
+bun install --frozen-lockfile
 make format
 make lint
 make test
+make build
 ```
+
+The independent CI `Build` check runs the production Next.js build, including generated route/module validation. Reproduce failures with `bun install --frozen-lockfile` and `make build` in a clean checkout; no API keys or agent servers are needed (Google Fonts downloads require network access). Maintainers must make `Build` a required status check for `main` in GitHub rulesets or branch protection; the workflow alone does not enforce merge blocking.
 
 The project is early-stage; contributions and feedback are welcome. See [GitHub issues](https://github.com/tbrandenburg/agentilogue/issues).

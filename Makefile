@@ -1,4 +1,4 @@
-.PHONY: format lint test release assistant-ui-upstream-check
+.PHONY: format lint test build release assistant-ui-upstream-check
 
 format:
 	bun run format
@@ -8,6 +8,9 @@ lint:
 
 test:
 	bun run test
+
+build:
+	bun run build
 
 assistant-ui-upstream-check:
 	bash scripts/assistant-ui-upstream-diff.sh
