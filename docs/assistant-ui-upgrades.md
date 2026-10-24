@@ -19,6 +19,16 @@ The copied elements are sourced from `assistant-ui/assistant-ui` at
 Each manifest entry records its exact registry path and Git blob SHA. Do not
 refresh these files from the live registry or `main`.
 
+## Released upstream blob comparison
+
+Run `make assistant-ui-upstream-check` to compare the manifest's Git blob hashes
+with the same paths at npm's latest stable `@assistant-ui/react` release tag.
+The PR check fails on changed or missing blobs (including formatting-only
+changes); a version bump with identical files passes. Review and update copied
+sources and manifest together when intentionally adopting a released change.
+The existing `bun run assistant-ui:drift-check` separately checks local copies.
+The maintainer must require `assistant-ui upstream diff` in main branch rules.
+
 The exact package baseline is `@assistant-ui/react@0.15.31`,
 `@assistant-ui/ai-sdk@0.0.11`, `@assistant-ui/react-markdown@0.14.24`, and
 `@assistant-ui/next@0.0.24`.
