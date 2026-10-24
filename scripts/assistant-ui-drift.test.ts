@@ -1,9 +1,11 @@
 import { execFileSync } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createHash } from "node:crypto";
 import { checkFile, formattedDigest, sourceDiff } from "./assistant-ui-drift";
 
 const manifest = {
@@ -26,6 +28,17 @@ const manifest = {
 };
 
 describe("assistant-ui copied-source drift check", () => {
+  it("reports a formatter parse failure without poisoning the next formatting operation", async () => {
+    await assert.rejects(
+      formattedDigest("const = ;", "invalid.tsx"),
+      /oxfmt failed for invalid\.tsx:/,
+    );
+    assert.equal(
+      await formattedDigest('const answer="ready";', "thread.tsx"),
+      createHash("sha256").update('const answer = "ready";\n').digest("hex"),
+    );
+  });
+
   it("accepts the pinned baseline", async () => {
     const source = 'const answer = "ready";\n';
     const baseline = {
@@ -82,13 +95,20 @@ describe("assistant-ui copied-source drift check", () => {
     assert.equal((await checkFile(updated, "thread.tsx", approvedSource)).ok, true);
   });
 
-  it("shows a committed source diff against the pull request base", async () => {
-    const repository = await mkdtemp(join(tmpdir(), "assistant-ui-drift-git-"));
+  it("shows a committed source diff against the pull request base", () => {
+    // Keep cleanup on this stack: Bun 1.3.9 can retain node:test context after an async timeout.
+    const repository = mkdtempSync(join(tmpdir(), "assistant-ui-drift-git-"));
     const runGit = (...args: string[]) =>
       execFileSync("git", args, {
         cwd: repository,
+        timeout: 1000,
         env: {
-          ...process.env,
+          NODE_ENV: "test",
+          PATH: process.env.PATH,
+          HOME: repository,
+          GIT_CONFIG_NOSYSTEM: "1",
+          GIT_CONFIG_GLOBAL: "/dev/null",
+          GIT_TEMPLATE_DIR: "",
           GIT_AUTHOR_NAME: "assistant-ui drift test",
           GIT_AUTHOR_EMAIL: "drift-test@example.invalid",
           GIT_COMMITTER_NAME: "assistant-ui drift test",
@@ -98,12 +118,12 @@ describe("assistant-ui copied-source drift check", () => {
 
     try {
       runGit("init", "--quiet");
-      await writeFile(join(repository, "thread.tsx"), 'const value = "ready";\n');
+      writeFileSync(join(repository, "thread.tsx"), 'const value = "ready";\n');
       runGit("add", "thread.tsx");
       runGit("commit", "--quiet", "-m", "baseline");
       const base = runGit("rev-parse", "HEAD").toString().trim();
 
-      await writeFile(join(repository, "thread.tsx"), 'const value = "changed";\n');
+      writeFileSync(join(repository, "thread.tsx"), 'const value = "changed";\n');
       runGit("add", "thread.tsx");
       runGit("commit", "--quiet", "-m", "functional change");
 
@@ -111,7 +131,7 @@ describe("assistant-ui copied-source drift check", () => {
       assert.match(diff, /-const value = "ready"/);
       assert.match(diff, /\+const value = "changed"/);
     } finally {
-      await rm(repository, { recursive: true, force: true });
+      rmSync(repository, { recursive: true, force: true });
     }
   });
 
