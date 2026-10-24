@@ -54,3 +54,13 @@ jobs:
       - run: bun run assistant-ui:drift-check
         env:
           ASSISTANT_UI_DRIFT_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+
+  assistant-ui-upstream-diff:
+    name: assistant-ui upstream diff
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - run: make assistant-ui-upstream-check

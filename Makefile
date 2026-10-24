@@ -1,4 +1,4 @@
-.PHONY: format lint test release
+.PHONY: format lint test release assistant-ui-upstream-check
 
 format:
 	bun run format
@@ -8,6 +8,9 @@ lint:
 
 test:
 	bun run test
+
+assistant-ui-upstream-check:
+	bash scripts/assistant-ui-upstream-diff.sh
 
 release:
 	@case "$(BUMP)" in MAJOR|MINOR|PATCH) ;; *) printf 'Usage: make release BUMP=MAJOR|MINOR|PATCH\n' >&2; exit 2 ;; esac
