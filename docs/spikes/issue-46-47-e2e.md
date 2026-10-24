@@ -71,7 +71,7 @@ intentional wrong-password rejection is tested separately from runtime failures.
 
 The coordinator repeated frozen installation, format/lint, **130 tests across
 23 files**, production build, generated-route typecheck and drift validation in
-an independently initialized disposable checkout under `/tmp/opencode`, without
+an independently initialized disposable checkout, without
 ancestor `node_modules`, existing `.next` or incremental state. The installed
 manifest audit verified **57 dependency/peer edges**, with zero incompatible
 ranges or ancestor resolutions.
@@ -124,8 +124,11 @@ output, fabricated server event or runtime-internal mutation is used.
 Each run writes reports and password-masked screenshots beneath the checkout's
 `.playwright-mcp/issue-46-47-<id>/`. The accepted reports/screenshots above are
 committed evidence; JSON formatting was normalized with parsed contents verified
-unchanged. Private mode-0600 service logs and the disposable HOME/XDG
-profile remain under `/tmp/opencode`; review/redact before publishing them.
+unchanged. Private mode-0600 service logs and the disposable HOME/XDG profile
+remain in a unique `assistant-ui-upgrade-*` directory under Node's `os.tmpdir()`
+(honoring `TMPDIR` on Unix). The selected temporary directory must exist and be
+writable; no `opencode` parent directory is required. Review/redact before
+publishing these private artifacts.
 Headers, credentials and prompt bodies are not saved by proof instrumentation.
 SIGINT/SIGTERM use the owned-process teardown; an external SIGKILL cannot execute
 JavaScript cleanup and requires inspecting exact owned PIDs, never name-killing.

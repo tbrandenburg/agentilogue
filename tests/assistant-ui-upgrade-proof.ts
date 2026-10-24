@@ -11,7 +11,8 @@ import {
   writeFileSync,
 } from "node:fs";
 import { createServer } from "node:net";
-import { resolve } from "node:path";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { chromium, type Browser } from "playwright";
 import { expect } from "playwright/test";
 import { createOpencodeClient } from "@opencode-ai/sdk/v2/client";
@@ -73,7 +74,7 @@ console.log(
 );
 if (process.argv.includes("--preflight")) process.exit(0);
 
-const scratch = mkdtempSync("/tmp/opencode/assistant-ui-upgrade-");
+const scratch = mkdtempSync(join(tmpdir(), "assistant-ui-upgrade-"));
 const project = resolve(scratch, "project");
 for (const directory of ["project", "home", "config", "data", "state", "cache"])
   mkdirSync(resolve(scratch, directory));
