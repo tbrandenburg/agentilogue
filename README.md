@@ -2,55 +2,54 @@
 
 **A minimal chat UI for AI models today, with opt-in local agent runtimes.**
 
-agentilogue is an open-source chat app built with [Next.js](https://nextjs.org/) and [assistant-ui](https://github.com/assistant-ui/assistant-ui). It keeps the conversation experience small and focused while keeping the backend integration replaceable.
+![agentilogue chat showing a multiturn conversation](docs/assets/agentilogue-chat.png)
 
-> **Project status:** Early development. The AI SDK + OpenAI and opencode ACP paths remain available. opencode · Native is an **experimental trusted-local opt-in for local use**, not a validated production lane. Adapter `0.2.30` generated and restored titles without the removed workaround. Longer server outages can stall same-mount recovery; reload/password re-entry is the proven safe recovery path. [Issue #34](https://github.com/tbrandenburg/agentilogue/issues/34) tracks production hardening.
+agentilogue is an open-source chat app built with [Next.js](https://nextjs.org/) and [assistant-ui](https://github.com/assistant-ui/assistant-ui). It keeps the conversation experience focused while allowing different backends.
 
-## What works today
+> **Status:** Early development. AI SDK + OpenAI and opencode ACP are supported. opencode · Native is experimental and intended for trusted local use, not production. See [native integration limits](docs/spikes/2026-10-opencode-local-boundary-issue-34.md) and [issue #34](https://github.com/tbrandenburg/agentilogue/issues/34).
 
-The app streams model responses through the Vercel AI SDK and OpenAI:
+## What it does
+
+- Streams model responses through the Vercel AI SDK and OpenAI.
+- Offers opt-in local agent sessions through opencode ACP.
+- Includes an experimental native opencode integration for local use.
+- Keeps chat UI separate from backend execution, with session tabs and provider-specific controls.
+
+The primary model-chat path is:
 
 ```text
 assistant-ui → useChatRuntime → /api/chat → Vercel AI SDK → OpenAI
 ```
 
-The UI and runtime are built on assistant-ui, so the existing model-chat path stays useful on its own while the project explores richer agent integrations.
-
-The chat screen supports in-memory session tabs with independent assistant-ui runtime transcripts. Native opencode session mappings are saved in the current browser tab's `sessionStorage` so a full-page reload can reopen the native conversation; the server password remains memory-only and must be entered again. AI SDK transcripts are not persisted. **Run with** offers AI SDK · OpenAI, opencode · ACP, and an experimental opencode · Native option when explicitly configured. The native adapter is pinned to `@assistant-ui/react-opencode@0.2.30` with SDK `1.18.35`, without the former bodyless-title-request suppression. Browser evidence confirmed matching server, official thread metadata, and runtime list-item titles, restored after reload; zero summarize requests or native HTTP 400 responses were observed. Custom app tabs still display chat labels. The [boundary report](docs/spikes/2026-10-opencode-local-boundary-issue-34.md) records current limits and preserves historical `0.2.29` failures and workaround results. The native client requires Basic auth and checks the configured app origin, but neither CORS nor the client check replaces server authentication. Projects and sessions share one trusted-local user's scope, without per-project authorization or filesystem sandboxing. [#33](https://github.com/tbrandenburg/agentilogue/issues/33)'s project-isolation NO-GO remains valid for strict isolation.
-
-The ACP lane exposes shared Project and Run with controls only; it does not offer model or agent overrides. Native opencode Agent and Model selectors are shown only within native opencode sessions.
-
-The checked-in models.dev catalog is provider-independent metadata grouped by canonical creator/lab IDs. Repository-owned **Preconfigured** tiers provide a compact fast path, while the broader catalog remains available for selection where the active execution path supports it. Check catalog freshness with `bun run models:check`; after reviewing drift, update it with `bun run models:sync`.
-
-If PR CI reports model-catalog drift, refresh the catalog in that PR, preserve tier choices, and rerun `bun run models:check` before pushing. Do not bypass the maintenance check.
+AI SDK transcripts are in-memory and are not persisted. Native opencode session mappings live in the current browser tab's `sessionStorage`; the opencode password stays in memory and must be entered again after reload. Chat tabs are not project-isolation or sandbox boundaries.
 
 ## Quick start
 
-You’ll need [Bun](https://bun.sh/). An [OpenAI API key](https://platform.openai.com/api-keys) is needed for the AI SDK path. opencode ACP is separately optional for its trusted-local path.
+Requirements: [Bun](https://bun.sh/) and an [OpenAI API key](https://platform.openai.com/api-keys) for the AI SDK path.
 
-1. Clone the repository and install dependencies:
+```bash
+git clone https://github.com/tbrandenburg/agentilogue.git
+cd agentilogue
+bun install
+```
 
-   ```bash
-   git clone https://github.com/tbrandenburg/agentilogue.git
-   cd agentilogue
-   bun install
-   ```
+Create `.env.local` in the project root:
 
-2. Add your key to `.env.local` in the project root:
+```env
+OPENAI_API_KEY=your-api-key
+```
 
-   ```env
-   OPENAI_API_KEY=your-api-key
-   ```
+Start the app and open [http://localhost:3000](http://localhost:3000):
 
-3. Start the development server:
+```bash
+bun run dev
+```
 
-   ```bash
-   bun run dev
-   ```
+## Optional local opencode integrations
 
-4. Open [http://localhost:3000](http://localhost:3000).
+### ACP
 
-To opt in to opencode ACP, install and authenticate the opencode CLI separately, then set these server-side values in `.env.local`:
+Install and authenticate the opencode CLI separately, then add to `.env.local`:
 
 ```env
 AGENT_API_ENABLED=1
@@ -60,21 +59,17 @@ OPENCODE_CWD=/absolute/path/to/project
 # OPENCODE_EXECUTABLE=/absolute/path/to/opencode
 ```
 
-Restart with `bun run dev`; the project entrypoint binds to `127.0.0.1`. The API has no caller authentication and trusts the operator's `AGENT_TRUSTED_LOCAL=1` assertion. It also rejects requests that fail its loopback Host and same-origin browser checks. Do not change the bind address or place it behind a reverse proxy or on a shared/untrusted network. opencode retains control of its native tools and permissions; agentilogue does not sandbox their filesystem or other effects. See [the API limits and behavior](docs/opencode-agent-api.md).
+Restart with `bun run dev`. This API has no caller authentication and must remain bound to loopback on a trusted machine. Do not expose it through a reverse proxy or shared/untrusted network. opencode's tools are not sandboxed by agentilogue. See [API limits and behavior](docs/opencode-agent-api.md).
 
-### opencode · Native (experimental local use)
+### Native (experimental)
 
-The experimental native lane uses adapter `0.2.30`, which resolves [title bug #9244](https://github.com/assistant-ui/assistant-ui/issues/9244) through upstream [PR #9245](https://github.com/assistant-ui/assistant-ui/pull/9245); the local workaround and its dedicated tests have been removed. Browser tests verified stale-reply blocking through Stop, reconnect, and reload, followed by a working fresh approval. The final build preserves settled Allow/Deny receipts after Stop and cancels only pending approvals. After server loss, the app retained the interrupted transcript and unknown-outcome warning without resending the prompt. **Active-run outages can stall the existing browser mount, including short outages; full-page reload and password re-entry recovered the same session safely. Failed status/history rechecks now display those recovery instructions and caution that retrying a prompt can repeat side effects. Seamless recovery is not guaranteed, and the exact cause remains unproven.** An interrupted tool can remain unresolved after reload; this is not terminal success. See the [recovery evidence](/docs/spikes/issue-37-native-recovery.md).
-
-Stop latches cancellation and notifies approval controls before storage writes; a storage failure still forwards the abort and surfaces the error. Cancelled permission IDs and the latch survive reload in the same browser tab when storage succeeds; a new prompt first quarantines stale server permission requests. opencode retry status remains active; recovery checks coalesce and preserve checks queued at the completion boundary. Intermediate tool calls, `unknown` finishes, and completion timestamps alone do not establish a terminal outcome. Storage-failure and scheduler-race coverage is deterministic, not fresh browser injection. These are client-side safeguards, not opencode v1 server guarantees: other clients can still reply to stale permissions. Separate remote-host validation remains production-hardening work under #34.
-
-Use an exact loopback app origin (for example `http://localhost:3000`) and an opencode server **with Basic auth enabled**:
+The native integration requires an opencode server with Basic auth enabled and an exact loopback app origin. Start the server:
 
 ```bash
 OPENCODE_SERVER_PASSWORD='choose-a-local-password' opencode serve --hostname 127.0.0.1 --cors http://localhost:3000
 ```
 
-Configure the app server (never an opencode password) and restart:
+Configure the app server in `.env.local` (do not put the opencode password here), then restart:
 
 ```env
 OPENCODE_NATIVE_ENABLED=1
@@ -82,25 +77,23 @@ OPENCODE_NATIVE_URL=http://127.0.0.1:4096
 OPENCODE_NATIVE_APP_ORIGIN=http://localhost:3000
 ```
 
-With these explicit values, the native target becomes available for experimental local use. The UI checks that `window.location.origin` exactly matches the configured app origin before constructing a native client; this is defense-in-depth, **not** authorization. Enter the opencode password in the selected tab when prompted; it is held in memory, never in the app environment, props, URL or storage. The lane does not provide project isolation. Remote-host access was not tested.
+Enter the server password in the selected chat when prompted. It is held in memory only. Native sessions do not provide project isolation or filesystem sandboxing. Recovery after server outages can require a full-page reload and password re-entry; seamless recovery is not guaranteed. Read the [native integration limits](docs/spikes/2026-10-opencode-local-boundary-issue-34.md) before enabling it.
 
-Native **Model** and **Agent** choices come from the authenticated opencode server, independently of the AI SDK catalog. Each tab stores its own provider/model pair and agent choice. **Default** delegates to opencode's agent/session/server defaults and remains available while catalog discovery is pending or fails; pickers require successful discovery. Choices lock after the first message, including restored sessions: omitting a model on continuation can retain a previous explicit override, so start a new session to reset choices. Saved explicit choices disable sending when the catalog is unavailable or cannot validate them, with an explanation. See the [selection evidence](/docs/spikes/issue-38-native-selection.md).
+## Documentation
 
-## Direction
-
-opencode ACP remains an opt-in trusted-local path. opencode · Native is experimental and explicit opt-in only; the upgraded adapter runs without a title-request workaround and must pass #34's E2E matrix before production approval. Future agent support should be added only when another runtime creates a concrete need, while keeping chat UI separate from execution and preserving useful native capabilities.
-
-Planned CLI targets include opencode, pi, codex, claude code, and github copilot. This is a direction, not a claim that those integrations are available today. Abstractions will be added as real integrations require them; the working AI SDK path remains a first-class option.
-
-## Architecture
-
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the current and planned integration boundaries and [docs/assistant-ui-upgrades.md](docs/assistant-ui-upgrades.md) for the pinned released-source baseline and copied-component drift checks. See [AGENTS.md](AGENTS.md) for project principles and development guidance.
+- [Architecture](docs/ARCHITECTURE.md) — integration lanes and boundaries.
+- [Agent contracts](docs/CONTRACTS.md) — provider-neutral backend contract.
+- [opencode ACP API](docs/opencode-agent-api.md) — security and API behavior.
+- [Development guidance](AGENTS.md) — project principles and workflows.
 
 ## Contributing
 
-Contributions and feedback are welcome. Before making a larger change, please read [AGENTS.md](AGENTS.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) to understand the project’s scope and direction.
+Before larger changes, read [AGENTS.md](AGENTS.md) and [the architecture guide](docs/ARCHITECTURE.md). Run the project checks with:
 
-Run the project checks with `make format`, `make lint`, and `make test`. To
-create a version commit and Git tag, then publish a GitHub release with generated
-notes, run `make release BUMP=PATCH` (or `MINOR` / `MAJOR`). Releases require a
-clean working tree and an authenticated `gh` CLI.
+```bash
+make format
+make lint
+make test
+```
+
+The project is early-stage; contributions and feedback are welcome. See [GitHub issues](https://github.com/tbrandenburg/agentilogue/issues).
