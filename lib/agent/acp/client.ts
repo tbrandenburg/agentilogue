@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { Readable, Writable } from "node:stream";
 import * as acp from "@agentclientprotocol/sdk";
 
-export interface OpenCodeAcpCallbacks {
+export interface AcpCallbacks {
   readonly onUpdate: (update: acp.SessionUpdate) => void;
   readonly onPermission: (
     params: acp.RequestPermissionRequest,
@@ -10,25 +10,32 @@ export interface OpenCodeAcpCallbacks {
   readonly onSession: (sessionId: string, cancel: () => Promise<void>) => void;
 }
 
-export async function runOpenCodeAcpPrompt(
-  config: {
-    readonly cwd: string;
-    readonly executable: string;
-    readonly providerSessionId?: string;
-  },
+export interface AcpPromptConfig {
+  readonly cwd: string;
+  readonly executable: string;
+  readonly args: readonly string[];
+  readonly env?: NodeJS.ProcessEnv;
+  readonly authenticate?: boolean;
+  readonly processGroup?: boolean;
+  readonly providerSessionId?: string;
+}
+
+export async function runAcpPrompt(
+  config: AcpPromptConfig,
   prompt: string,
-  callbacks: OpenCodeAcpCallbacks,
+  callbacks: AcpCallbacks,
 ): Promise<acp.StopReason> {
-  const child = spawn(config.executable, ["acp"], {
+  const child = spawn(config.executable, [...config.args], {
     cwd: config.cwd,
-    env: process.env,
+    env: config.env ?? process.env,
+    detached: config.processGroup,
     stdio: ["pipe", "pipe", "ignore"],
   });
   const input = child.stdout;
   const output = child.stdin;
   if (!input || !output) {
     child.kill("SIGTERM");
-    throw new Error("opencode ACP stdio unavailable");
+    throw new Error("ACP stdio unavailable");
   }
   let childExited = false;
   const exit = new Promise<void>((resolveExit) => {
@@ -39,6 +46,10 @@ export async function runOpenCodeAcpPrompt(
     child.once("error", () => resolveExit());
   });
   let acceptUpdates = false;
+  let startupTimer: ReturnType<typeof setTimeout> | undefined;
+  const startup = new Promise<never>((_resolve, reject) => {
+    startupTimer = setTimeout(() => reject(new Error("ACP startup timed out")), 120_000);
+  });
   const client = acp
     .client({ name: "agentilogue" })
     .onNotification(acp.methods.client.session.update, ({ params }) =>
@@ -60,8 +71,15 @@ export async function runOpenCodeAcpPrompt(
           clientCapabilities: {},
           clientInfo: { name: "agentilogue", version: "0.1.0" },
         });
+        if (initialized.protocolVersion !== acp.PROTOCOL_VERSION)
+          throw new Error("Unsupported ACP protocol version");
+        if (config.authenticate) {
+          if (!initialized.authMethods?.some((method) => method.id === "api-key"))
+            throw new Error("ACP API-key authentication unavailable");
+          await context.request(acp.methods.agent.authenticate, { methodId: "api-key" });
+        }
         if (config.providerSessionId && !initialized.agentCapabilities?.loadSession)
-          throw new Error("opencode ACP does not support loading this conversation");
+          throw new Error("ACP does not support loading this conversation");
         let sessionId: string;
         if (config.providerSessionId) {
           await context.request(acp.methods.agent.session.load, {
@@ -80,6 +98,7 @@ export async function runOpenCodeAcpPrompt(
         // session/load replays the full history before its response. The browser
         // already owns that transcript; only updates after load belong to this run.
         acceptUpdates = true;
+        clearTimeout(startupTimer);
         const cancel = () => context.notify(acp.methods.agent.session.cancel, { sessionId });
         const promptResult = context.request(acp.methods.agent.session.prompt, {
           sessionId,
@@ -91,16 +110,28 @@ export async function runOpenCodeAcpPrompt(
     );
     return await Promise.race([
       connection,
+      startup,
       exit.then(() => {
-        throw new Error("opencode ACP process exited before prompt completion");
+        throw new Error("ACP process exited before prompt completion");
       }),
     ]);
   } finally {
+    clearTimeout(startupTimer);
     output.end();
-    await Promise.race([exit, new Promise<void>((resolveExit) => setTimeout(resolveExit, 1000))]);
-    if (!childExited) {
-      child.kill("SIGTERM");
-      await exit;
-    }
+    const wait = () =>
+      Promise.race([exit, new Promise<void>((resolveExit) => setTimeout(resolveExit, 1000))]);
+    const kill = (signal: NodeJS.Signals) => {
+      try {
+        if (config.processGroup && child.pid) process.kill(-child.pid, signal);
+        else if (!childExited) child.kill(signal);
+      } catch (error) {
+        if (!(error instanceof Error && "code" in error && error.code === "ESRCH")) throw error;
+      }
+    };
+    await wait();
+    if (!childExited || config.processGroup) kill("SIGTERM");
+    await wait();
+    if (!childExited || config.processGroup) kill("SIGKILL");
+    await wait();
   }
 }

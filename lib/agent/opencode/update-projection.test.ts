@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { SessionUpdate } from "@agentclientprotocol/sdk";
 import type { AgentRunEvent, RunMessage, RunPart, RunTool } from "../contracts/run";
-import { projectOpenCodeUpdate } from "./update-projection";
+import { projectAcpUpdate as projectOpenCodeUpdate } from "../acp/update-projection";
 
 describe("opencode ACP update projection", () => {
   it("appends chunks by stable message ID", () => {

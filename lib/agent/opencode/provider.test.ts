@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import * as acp from "@agentclientprotocol/sdk";
-import type { OpenCodeAcpCallbacks } from "./acp-client";
+import type { AcpCallbacks as OpenCodeAcpCallbacks } from "../acp/client";
 import { OpenCodeProvider } from "./provider";
 import { RunIdSchema, ConversationIdSchema } from "../contracts/identifiers";
 

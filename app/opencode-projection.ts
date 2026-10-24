@@ -127,6 +127,7 @@ export function assistantMessageFromSnapshot(
   messageId: string,
   permissions: ReadonlyMap<string, PermissionRecord>,
   createdAt: Date,
+  label = "opencode",
 ): ThreadMessageLike {
   const parts = [...snapshot.parts];
   for (const permission of snapshot.pendingPermissions) {
@@ -154,7 +155,7 @@ export function assistantMessageFromSnapshot(
     return {
       type: "tool-call",
       toolCallId: part.toolCallId,
-      toolName: tool?.title ?? approval?.request.title ?? "opencode tool",
+      toolName: tool?.title ?? approval?.request.title ?? `${label} tool`,
       args: {},
       argsText: "",
       ...(tool?.summary !== undefined
@@ -162,7 +163,7 @@ export function assistantMessageFromSnapshot(
         : tool?.status === "completed"
           ? { result: "" }
           : tool?.status === "failed"
-            ? { result: "opencode tool failed" }
+            ? { result: `${label} tool failed` }
             : {}),
       ...(tool?.status === "running" || tool?.status === "pending" ? { isPreliminary: true } : {}),
       ...(tool?.status === "failed" ? { isError: true } : {}),
@@ -190,25 +191,25 @@ export function assistantMessageFromSnapshot(
     content.push({
       type: "text",
       id: "run-outcome",
-      text: `opencode run ${outcome.kind}: ${outcome.message}`,
+      text: `${label} run ${outcome.kind}: ${outcome.message}`,
     });
   else if (outcome?.kind === "stopped")
     content.push({
       type: "text",
       id: "run-outcome",
-      text: `opencode stopped the run (${outcome.reason}).`,
+      text: `${label} stopped the run (${outcome.reason}).`,
     });
   else if (outcome?.kind === "cancelled")
     content.push({
       type: "text",
       id: "run-outcome",
-      text: "opencode confirmed this run was cancelled.",
+      text: `${label} confirmed this run was cancelled.`,
     });
   else if (outcome && snapshot.messages.length === 0)
     content.push({
       type: "text",
       id: "run-outcome",
-      text: "opencode completed without a text response.",
+      text: `${label} completed without a text response.`,
     });
   const status: ThreadMessageLike["status"] =
     snapshot.phase === "running"

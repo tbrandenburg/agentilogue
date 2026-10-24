@@ -8,6 +8,7 @@ type SessionControlsContextValue = {
   config: SessionControlsConfig;
   hasOpenAIKey: boolean;
   hasOpenCodeApi: boolean;
+  hasCodexApi?: boolean;
   hasOpenCodeNative?: boolean;
   nativeOpenCodeReason?: string;
   providerControls?: ReactNode;
@@ -34,6 +35,7 @@ export function AgentilogueSessionControlsSlot() {
       config={value.config}
       hasOpenAIKey={value.hasOpenAIKey}
       hasOpenCodeApi={value.hasOpenCodeApi}
+      hasCodexApi={value.hasCodexApi}
       hasOpenCodeNative={value.hasOpenCodeNative ?? false}
       nativeOpenCodeReason={value.nativeOpenCodeReason}
       providerControls={value.providerControls}

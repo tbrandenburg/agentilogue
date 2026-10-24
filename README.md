@@ -11,6 +11,7 @@ agentilogue is an open-source chat app built with [Next.js](https://nextjs.org/)
 ## What it does
 
 - Streams model responses through the Vercel AI SDK and OpenAI.
+- Offers opt-in Codex ACP text, tools, approvals and Stop using the same conversation surface.
 - Offers opt-in local agent sessions through opencode ACP.
 - Supports opt-in native opencode conversations for one trusted local user.
 - Keeps chat UI separate from backend execution, with session tabs and provider-specific controls.
@@ -85,11 +86,16 @@ After a server outage, reload the page and re-enter the password to restore the 
 
 Read [native known issues, support limits, and recovery](/docs/opencode-native-known-issues.md) before enabling. The pinned `@assistant-ui/react-opencode@0.2.30` API remains **experimental upstream**; retest adapter/SDK/server upgrades, including stream readiness and cancellation. To disable native, unset `OPENCODE_NATIVE_ENABLED` or set it to `0`, then restart the app. Support does not mean default-enabled.
 
+## Optional local Codex ACP
+
+Codex is disabled by default. Install the pinned adapter and Codex runtime separately, then configure the trusted-local server's executable, project directory and API key. No browser login or credential settings are added. See [Codex setup and limits](/docs/codex-acp.md).
+
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md) — integration lanes and boundaries.
 - [Agent contracts](docs/CONTRACTS.md) — provider-neutral backend contract.
 - [opencode ACP API](docs/opencode-agent-api.md) — security and API behavior.
+- [Codex ACP setup](/docs/codex-acp.md) — pinned executable, server-only authentication and limitations.
 - [Development guidance](AGENTS.md) — project principles and workflows.
 
 ## Contributing
