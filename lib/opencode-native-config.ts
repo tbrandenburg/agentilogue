@@ -53,9 +53,8 @@ export function getOpenCodeNativeAvailability(
     return { enabled: false, reason: "Configure the app origin without a path" };
   }
 
-  // An explicit opt-in allows browser E2E with the temporary SDK fetch workaround
-  // for assistant-ui/assistant-ui#9244. This is not production readiness; the
-  // native adapter's remaining lifecycle/permission behavior still needs E2E.
+  // Trusted-local native access stays opt-in. Connection additionally requires
+  // verified Basic auth and an exact browser app-origin match; no title workaround.
   return {
     enabled: true,
     baseUrl: new URL(serverAddress).origin,
