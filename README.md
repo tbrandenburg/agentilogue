@@ -6,13 +6,13 @@
 
 agentilogue is an open-source chat app built with [Next.js](https://nextjs.org/) and [assistant-ui](https://github.com/assistant-ui/assistant-ui). It keeps the conversation experience focused while allowing different backends.
 
-> **Status:** Early development. AI SDK + OpenAI and opencode ACP are supported. opencode · Native is experimental and intended for trusted local use, not production. See [native integration limits](docs/spikes/2026-10-opencode-local-boundary-issue-34.md) and [issue #34](https://github.com/tbrandenburg/agentilogue/issues/34).
+> **Status:** Early development. AI SDK + OpenAI and opencode ACP are supported. opencode · Native is **Supported for trusted-local use (opt-in)**: one trusted user on one machine, with both app and opencode server bound to loopback and HTTP Basic authentication required on the opencode server. Remote or multi-user hosting is unsupported. The upstream adapter API remains experimental. See [native known issues and recovery](/docs/opencode-native-known-issues.md).
 
 ## What it does
 
 - Streams model responses through the Vercel AI SDK and OpenAI.
 - Offers opt-in local agent sessions through opencode ACP.
-- Includes an experimental native opencode integration for local use.
+- Supports opt-in native opencode conversations for one trusted local user.
 - Keeps chat UI separate from backend execution, with session tabs and provider-specific controls.
 
 The primary model-chat path is:
@@ -61,12 +61,14 @@ OPENCODE_CWD=/absolute/path/to/project
 
 Restart with `bun run dev`. This API has no caller authentication and must remain bound to loopback on a trusted machine. Do not expose it through a reverse proxy or shared/untrusted network. opencode's tools are not sandboxed by agentilogue. See [API limits and behavior](docs/opencode-agent-api.md).
 
-### Native (experimental)
+### Native — Supported for trusted-local use (opt-in)
 
-The native integration requires an opencode server with Basic auth enabled and an exact loopback app origin. Start the server:
+Use one trusted user's own projects/sessions on one machine, with both app and server bound to loopback, HTTP Basic auth enabled on the opencode server, and the exact configured app origin. The app itself does not implement caller authentication. This is not remote/multi-user support, per-project authorization, or a filesystem sandbox. Tools retain the local user's native opencode permissions and authority.
+
+Use the tested opencode `1.18.35` server generation, not an incompatible global CLI. Start the server from the intended project directory:
 
 ```bash
-OPENCODE_SERVER_PASSWORD='choose-a-local-password' opencode serve --hostname 127.0.0.1 --cors http://localhost:3000
+OPENCODE_SERVER_PASSWORD='choose-a-local-password' bunx --package opencode-ai@1.18.35 opencode serve --hostname 127.0.0.1 --cors http://localhost:3000
 ```
 
 Configure the app server in `.env.local` (do not put the opencode password here), then restart:
@@ -77,7 +79,11 @@ OPENCODE_NATIVE_URL=http://127.0.0.1:4096
 OPENCODE_NATIVE_APP_ORIGIN=http://localhost:3000
 ```
 
-Enter the server password in the selected chat when prompted. It is held in memory only. Native sessions do not provide project isolation or filesystem sandboxing. Recovery after server outages can require a full-page reload and password re-entry; seamless recovery is not guaranteed. Read the [native integration limits](docs/spikes/2026-10-opencode-local-boundary-issue-34.md) before enabling it.
+Enter the server password in the selected chat when prompted. It is held in that chat's memory only; never put it in app configuration or browser storage. Missing/wrong passwords, invalid server URLs, and app-origin mismatches remain blocked. Loopback/CORS alone are not authentication.
+
+After a server outage, reload the page and re-enter the password to restore the tab-local session mapping/history. Inspect partial work before manually retrying: **Outcome unknown** is not completion, and retrying can repeat side effects. No prompt is automatically resent. Seamless reconnect is not guaranteed, even after a short outage. Native model/agent choices lock after the first message; start a new session to change them.
+
+Read [native known issues, support limits, and recovery](/docs/opencode-native-known-issues.md) before enabling. The pinned `@assistant-ui/react-opencode@0.2.30` API remains **experimental upstream**; retest adapter/SDK/server upgrades, including stream readiness and cancellation. To disable native, unset `OPENCODE_NATIVE_ENABLED` or set it to `0`, then restart the app. Support does not mean default-enabled.
 
 ## Documentation
 

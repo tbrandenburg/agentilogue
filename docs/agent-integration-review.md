@@ -45,6 +45,8 @@ The five-module count is a scoped locality baseline, **not** total implementatio
 
 ## Behavioral evidence matrix
 
+The matrix retains evidence at its cited review revisions, including their unresolved findings. For current native support, the #65 lifecycle correction, and fresh recovery proof, see [native known issues and verification](/docs/opencode-native-known-issues.md); historical FAIL/NOT TESTED rows are not rewritten as passes.
+
 Statuses summarize evidence linked here, not a blanket production-readiness declaration. `PASS` is limited to the named evidence; `FAIL` means a known acceptance gate failed; `BLOCKED` means a prerequisite prevents the test; `NOT TESTED` means no concrete evidence is recorded here.
 
 | Lane                         | Runtime/selection and send                                                                                                                                     | Isolation, lifecycle, and native behavior                                                                                                                                                                                      | Current evidence/status                                                                                                                                                                                                                                                                                              |
