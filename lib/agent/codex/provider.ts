@@ -1,5 +1,5 @@
 import { AcpProvider } from "../acp/provider";
-import { getCodexConfig } from "./config";
+import { getCodexChildEnvironment, getCodexConfig } from "./config";
 
 export function createCodexProviderFromEnvironment(): AcpProvider | undefined {
   const config = getCodexConfig();
@@ -10,12 +10,6 @@ export function createCodexProviderFromEnvironment(): AcpProvider | undefined {
     args: [],
     authenticate: true,
     processGroup: true,
-    env: {
-      ...process.env,
-      NO_BROWSER: "1",
-      INITIAL_AGENT_MODE: "read-only",
-      DEFAULT_AUTH_REQUEST: undefined,
-      APP_SERVER_LOGS: undefined,
-    },
+    env: getCodexChildEnvironment(),
   });
 }
