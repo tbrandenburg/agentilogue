@@ -336,3 +336,5 @@ describe("opencode assistant-ui projection", () => {
     );
   });
 });
+
+}
