@@ -84,7 +84,9 @@ function ModelSelectorTrigger({
   onKeyDown,
   ...props
 }: ModelSelectorTriggerProps) {
-  const { setOpen } = useModelSelectorContext();
+  const { setOpen, selectedModel, efforts, effort } = useModelSelectorContext();
+  const effortName =
+    effort !== undefined ? efforts?.find((item) => item.id === effort)?.name : undefined;
 
   return (
     <PopoverTrigger
@@ -92,6 +94,11 @@ function ModelSelectorTrigger({
       data-variant={variant ?? "outline"}
       data-size={size ?? "default"}
       role="combobox"
+      aria-label={
+        selectedModel
+          ? `Model: ${selectedModel.name}${effortName ? ` ${effortName}` : ""}`
+          : "Select model"
+      }
       aria-haspopup="listbox"
       className={cn(modelSelectorTriggerVariants({ variant, size }), className)}
       onKeyDown={(e) => {
@@ -416,7 +423,7 @@ function ModelSelectorEffort({
             key={option.id}
             value={option.id}
             className={cn(
-              "focus-visible:ring-ring/50 text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer rounded-md px-2 py-1 text-xs transition-colors outline-none focus-visible:ring-1",
+              "focus-visible:ring-ring/50 text-muted-foreground hover:bg-muted hover:text-foreground rounded-md px-2 py-1 text-xs transition-colors outline-none focus-visible:ring-1",
               "data-checked:bg-accent data-checked:text-accent-foreground data-checked:font-medium",
             )}
           >

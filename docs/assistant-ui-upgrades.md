@@ -15,7 +15,7 @@ Verify exact upstream blobs when explicitly refreshing the baseline, as describe
 in the release procedure below.
 
 The copied elements are sourced from `assistant-ui/assistant-ui` at
-`@assistant-ui/react@0.15.31` (tag commit `d8124e7b427021d977abf9aabc9a057705a81644`).
+`@assistant-ui/react@0.15.33` (tag commit `eb65bd4558b769550093003c95e5867ad0ec8eba`).
 Each manifest entry records its exact registry path and Git blob SHA. Do not
 refresh these files from the live registry or `main`.
 
@@ -29,23 +29,26 @@ sources and manifest together when intentionally adopting a released change.
 The existing `bun run assistant-ui:drift-check` separately checks local copies.
 The maintainer must require `assistant-ui upstream diff` in main branch rules.
 
-The exact package baseline is `@assistant-ui/react@0.15.31`,
+The exact package baseline is `@assistant-ui/react@0.15.33`,
 `@assistant-ui/ai-sdk@0.0.11`, `@assistant-ui/react-markdown@0.14.24`, and
 `@assistant-ui/next@0.0.24`.
 
 The trusted-local native opencode lane separately pins the upstream experimental adapter
 `@assistant-ui/react-opencode@0.2.30` and `@opencode-ai/sdk@1.18.35`.
-Root overrides pin `@assistant-ui/core@0.3.31`, `@assistant-ui/store@0.3.22`,
-and `@assistant-ui/tap@0.9.24`; `assistant-stream` is pinned and overridden
-to one shared `0.3.54` version.
+Root overrides pin `@assistant-ui/core@0.3.33`, `@assistant-ui/store@0.3.23`,
+and `@assistant-ui/tap@0.9.25`; `assistant-stream` is pinned and overridden
+to one shared `0.3.56` version.
 The adapter upgrade removed the app's temporary title-request workaround and
 its dedicated tests. Browser evidence for `0.2.30` confirms generated server
 titles match official thread metadata/list-item titles and restore after reload,
 with zero summarize requests or native HTTP 400 responses observed.
 The same-mount recovery failure and prior `0.2.29` evidence are retained in the
 [issue #34 report](spikes/2026-10-opencode-local-boundary-issue-34.md).
-The copied inventory now matches the `0.15.31` release tag after formatting:
+The copied inventory now matches the `0.15.33` release tag after formatting:
 **zero functional Thread patches and zero approved copied-source patches**.
+The release opens default tool groups while a call requires action and adds a
+descriptive model-selector accessible label; it also removes cursor styling in
+the image, media player, model selector and Thread copies.
 The former `ComposerActionLeft` patch from
 [PR #17](https://github.com/tbrandenburg/agentilogue/pull/17) is replaced by the
 released `ThreadComponents.ComposerExtra` slot from
@@ -103,7 +106,7 @@ checks only for a new chat with an empty composer. The former local
 empty. Send-enabled suggestions now rely on the core runtime send policy,
 including `isSendDisabled`, enforced by assistant-ui's suggestion trigger
 ([upstream fix #8941](https://github.com/assistant-ui/assistant-ui/pull/8941),
-included in the `@assistant-ui/core@0.3.25` line and retained in `0.3.31`).
+included in the `@assistant-ui/core@0.3.25` line and retained in `0.3.33`).
 
 Session tabs, running-state reporting, the SessionControls provider/slot,
 ModelContextBridge, model catalog/validation, and RunTarget policy are
@@ -115,7 +118,7 @@ than patching copied source on a future upgrade.
 1. Check the desired published assistant-ui release and peer dependency ranges;
    do not use `main` or the live registry as the source baseline.
 2. Create a clean worktree, update exact package versions/overrides in a
-   dedicated change, and run `bun install --frozen-lockfile`.
+   dedicated change, and run `bun run setup`.
 3. Fetch the exact upstream commit for the explicit comparison step:
    `git fetch --no-tags https://github.com/assistant-ui/assistant-ui.git <commit>`.
    For every copied file, verify its manifest blob against

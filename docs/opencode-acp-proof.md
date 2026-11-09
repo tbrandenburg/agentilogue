@@ -5,7 +5,7 @@
 The proof uses `@agentclientprotocol/sdk` **1.7.0** and opencode **1.18.32**. The SDK's stable entry point is ACP v1. The local CLI is a small stdio client; it advertises only filesystem read/write methods, implemented within its supplied proof `cwd`. It advertises no terminal, elicitation, or session-extension capabilities.
 
 ```sh
-bun install --frozen-lockfile
+bun run setup
 bun run opencode:acp-proof /absolute/disposable/project 'Reply with exactly ACP_PROOF_OK and nothing else.'
 ```
 

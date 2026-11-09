@@ -430,8 +430,7 @@ try {
   async function approval(turn: ReturnType<typeof assistant>, label: string) {
     const group = turn.getByRole("button", { name: /^\d+ tool calls?$/ }).last();
     await expect(group).toBeVisible({ timeout: 120_000 });
-    if ((await group.getAttribute("aria-expanded")) === "false") await group.click();
-    await expect(group).toHaveAttribute("aria-expanded", "true");
+    await expect(group).toHaveAttribute("aria-expanded", "true", { timeout: 120_000 });
     const button = turn.getByRole("button", { name: label, exact: true });
     await expect(button).toBeVisible({ timeout: 120_000 });
     await expect(button).toBeEnabled();
@@ -440,9 +439,19 @@ try {
   async function allow(turn: ReturnType<typeof assistant>, label = "Allow") {
     const button = await approval(turn, label);
     await button.click();
+    const group = turn.locator('[data-slot="tool-group-root"]').last();
+    const trigger = group.locator('[data-slot="tool-group-trigger"]');
+    const tool = group.locator('[data-slot="tool-fallback-trigger"]').last();
+    await expect(trigger).toHaveAttribute("aria-expanded", "false", { timeout: 120_000 });
+    await expect(tool).toHaveCount(0, { timeout: 30_000 });
+    await trigger.click();
+    await expect(trigger).toHaveAttribute("aria-expanded", "true");
+    await expect(tool).toBeVisible({ timeout: 30_000 });
+    if ((await tool.getAttribute("aria-expanded")) === "false") await tool.click();
+    await expect(tool).toHaveAttribute("aria-expanded", "true");
     await expect(
-      turn.locator('[data-slot="tool-fallback-approval-receipt"][data-outcome="allowed"]').last(),
-    ).toBeVisible();
+      group.locator('[data-slot="tool-fallback-approval-receipt"][data-outcome="allowed"]').last(),
+    ).toBeVisible({ timeout: 120_000 });
   }
 
   await page.goto(app);
@@ -555,6 +564,10 @@ try {
     await idle();
     await expect(acpCancel).toContainText("opencode confirmed this run was cancelled.");
     await expect(pending).toHaveCount(0);
+    const closedGroup = acpCancel.getByRole("button", { name: /^\d+ tool calls?$/ }).last();
+    if ((await closedGroup.getAttribute("aria-expanded")) === "false") await closedGroup.click();
+    const closedTool = acpCancel.getByRole("button", { name: /^Used tool:/ }).last();
+    if ((await closedTool.getAttribute("aria-expanded")) === "false") await closedTool.click();
     await expect(
       acpCancel.locator('[data-slot="tool-fallback-approval-receipt"][data-outcome="closed"]'),
     ).toBeVisible();
@@ -581,7 +594,9 @@ try {
 
     await newSession("opencode · Native");
     await connect();
-    await expect(panel().getByRole("combobox", { name: "Model", exact: true })).toBeEnabled();
+    await expect(panel().getByRole("combobox", { name: "Model", exact: true })).toBeEnabled({
+      timeout: 60_000,
+    });
     await pick("Model", "openai/gpt-4.1-mini");
     await pick("Agent", "build");
     await send("Reply exactly NATIVE_46_47. Do not use tools.");
