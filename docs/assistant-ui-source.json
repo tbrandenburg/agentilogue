@@ -2,7 +2,7 @@
   "formatter": "oxfmt@0.68.0",
   "upstream": {
     "repository": "assistant-ui/assistant-ui",
-    "commit": "d8124e7b427021d977abf9aabc9a057705a81644"
+    "commit": "eb65bd4558b769550093003c95e5867ad0ec8eba"
   },
   "files": [
     {
@@ -43,8 +43,8 @@
     {
       "path": "components/assistant-ui/elements/image.tsx",
       "upstreamPath": "packages/ui/src/components/react/assistant-ui/elements/image.tsx",
-      "upstreamBlob": "d00be8f9d3996efb413b52884d61c10b764e1022",
-      "formattedSha256": "4d3316dc4a1b1c09c9efd2dedc6d18a6bc2acfd353d9a07cd17730dd6a8f8f92",
+      "upstreamBlob": "f2c55d86566546c29fec95f8f9527bc4b41d3a32",
+      "formattedSha256": "a09bd77718b96aff4d5a4b34390d547c08abbb720dcf816345da02868de25b54",
       "approvedPatches": []
     },
     {
@@ -57,15 +57,15 @@
     {
       "path": "components/assistant-ui/elements/media-player.tsx",
       "upstreamPath": "packages/ui/src/components/react/assistant-ui/elements/media-player.tsx",
-      "upstreamBlob": "67024109a43a0879189a02c7230b89e07db9f8b9",
-      "formattedSha256": "c8d883000e978c0e7a1203e612ee4786b709bf69b02644b7d4dbc0ab7a93d5a4",
+      "upstreamBlob": "47d9e6f9951ca4ea450e1c372ddef6d549bb8856",
+      "formattedSha256": "07f4ef7310dde9cdd008ff00f6a464ad51a81d4462f84f2f924553e1512ffc98",
       "approvedPatches": []
     },
     {
       "path": "components/assistant-ui/elements/model-selector.tsx",
       "upstreamPath": "packages/ui/src/components/react/assistant-ui/elements/model-selector.tsx",
-      "upstreamBlob": "035d0c19cbeecf61f1dce97ef00924e2531a5d2a",
-      "formattedSha256": "1e320831c125737552707786da00a065d8f7cb83049b4733b235d85d133d76d3",
+      "upstreamBlob": "8945e089663bc422e2bcb05d74efb69b4866e756",
+      "formattedSha256": "3649353e5041c25d098a262da3c880f415e0b7179a5fb327017f2d3d059607f0",
       "approvedPatches": []
     },
     {
@@ -92,8 +92,8 @@
     {
       "path": "components/assistant-ui/elements/thread.aui.tsx",
       "upstreamPath": "packages/ui/src/components/react/assistant-ui/elements/thread.aui.tsx",
-      "upstreamBlob": "cb05bc92f95b04e1344ca5dbe8fb6772351e411d",
-      "formattedSha256": "5324047037c9db38d79751134d9aeced5b54668b7614644a4ea181f67ee9fc13",
+      "upstreamBlob": "663d1db517cba19dfbbcd5fdc6ee89339f9f3973",
+      "formattedSha256": "14a72c10a3271b226979155d3b484bcac64f1b3d0b9ef36d7a595ed58d322857",
       "approvedPatches": []
     },
     {

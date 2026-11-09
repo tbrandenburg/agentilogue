@@ -26,13 +26,17 @@ AI SDK transcripts are in-memory and are not persisted. Native opencode session 
 
 ## Quick start
 
-Requirements: [Bun](https://bun.sh/) and an [OpenAI API key](https://platform.openai.com/api-keys) for the AI SDK path.
+Requirements: [Node.js](https://nodejs.org/) `>=24.22.1 <25` and [Bun](https://bun.sh/) `>=1.4.4 <2` on `PATH`, plus an [OpenAI API key](https://platform.openai.com/api-keys) for the AI SDK path. CI pins Node.js `24.22.1` and Bun `1.4.4`.
 
 ```bash
 git clone https://github.com/tbrandenburg/agentilogue.git
 cd agentilogue
-bun install
+bun run setup
 ```
+
+`bun run setup` checks Node.js, the invoking Bun, and Bun on `PATH` before installing from the frozen lockfile. If a check fails, install supported versions, update `PATH`, and retry. A direct `bun install` can contact the registry before its `preinstall` check runs; use `bun run setup` instead.
+
+These minimum versions address the eMudhra certificate compromise in the [Node.js security release](https://nodejs.org/en/blog/release/v24.22.1) and [Bun advisory](https://github.com/oven-sh/bun/security/advisories/GHSA-26q8-h657-pf84). The checks verify versions, not effective trust configuration. Assess custom CA stores and external agent binaries separately; update deployment runtimes and images, rebuild embedded runtimes where applicable, and restart affected processes after updates.
 
 Create `.env.local` in the project root:
 
@@ -103,13 +107,13 @@ Codex is disabled by default. Install the pinned adapter and Codex runtime separ
 Before larger changes, read [AGENTS.md](AGENTS.md) and [the architecture guide](docs/ARCHITECTURE.md). Run the project checks with:
 
 ```bash
-bun install --frozen-lockfile
+bun run setup
 make format
 make lint
 make test
 make build
 ```
 
-The independent CI `Build` check runs the production Next.js build, including generated route/module validation. Reproduce failures with `bun install --frozen-lockfile` and `make build` in a clean checkout; no API keys or agent servers are needed (Google Fonts downloads require network access). Maintainers must make `Build` a required status check for `main` in GitHub rulesets or branch protection; the workflow alone does not enforce merge blocking.
+The independent CI `Build` check runs the production Next.js build, including generated route/module validation. Reproduce failures with `bun run setup` and `make build` in a clean checkout; no API keys or agent servers are needed (Google Fonts downloads require network access). Maintainers must make `Build` a required status check for `main` in GitHub rulesets or branch protection; the workflow alone does not enforce merge blocking.
 
 The project is early-stage; contributions and feedback are welcome. See [GitHub issues](https://github.com/tbrandenburg/agentilogue/issues).

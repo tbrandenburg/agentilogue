@@ -11,7 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.22.1
       - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - run: node scripts/check-runtimes.cjs
       - run: bun install --frozen-lockfile
       - run: make format
 
@@ -20,7 +26,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.22.1
       - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - run: node scripts/check-runtimes.cjs
       - run: bun install --frozen-lockfile
       - run: make lint
 
@@ -29,7 +41,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.22.1
       - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - run: node scripts/check-runtimes.cjs
       - run: bun install --frozen-lockfile
       - run: make test
 
@@ -38,7 +56,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.22.1
       - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - run: node scripts/check-runtimes.cjs
       - run: bun install --frozen-lockfile
       - run: bun run typecheck
 
@@ -50,7 +74,13 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.22.1
       - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - run: node scripts/check-runtimes.cjs
       - run: bun install --frozen-lockfile
       - run: make build
 
@@ -61,7 +91,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.22.1
       - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - run: node scripts/check-runtimes.cjs
       - run: bun install --frozen-lockfile
       - run: bun run assistant-ui:drift-check
         env:
@@ -75,4 +111,11 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.22.1
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - run: node scripts/check-runtimes.cjs
       - run: make assistant-ui-upstream-check

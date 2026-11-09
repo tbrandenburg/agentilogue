@@ -9,7 +9,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.22.1
       - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - run: node scripts/check-runtimes.cjs
       - run: bun run models:check
       - name: Explain model catalog failures
         if: ${{ failure() }}
