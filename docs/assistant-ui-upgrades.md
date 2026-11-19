@@ -15,7 +15,7 @@ Verify exact upstream blobs when explicitly refreshing the baseline, as describe
 in the release procedure below.
 
 The copied elements are sourced from `assistant-ui/assistant-ui` at
-`@assistant-ui/react@0.15.33` (tag commit `eb65bd4558b769550093003c95e5867ad0ec8eba`).
+`@assistant-ui/react@0.15.37` (tag commit `8d69ac5074775af0a0ab6745684c6349d75d6a68`).
 Each manifest entry records its exact registry path and Git blob SHA. Do not
 refresh these files from the live registry or `main`.
 
@@ -29,26 +29,30 @@ sources and manifest together when intentionally adopting a released change.
 The existing `bun run assistant-ui:drift-check` separately checks local copies.
 The maintainer must require `assistant-ui upstream diff` in main branch rules.
 
-The exact package baseline is `@assistant-ui/react@0.15.33`,
-`@assistant-ui/ai-sdk@0.0.11`, `@assistant-ui/react-markdown@0.14.24`, and
-`@assistant-ui/next@0.0.24`.
+The exact package baseline is `@assistant-ui/react@0.15.37`,
+`@assistant-ui/ai-sdk@0.0.19`, `@assistant-ui/react-markdown@0.14.26`, and
+`@assistant-ui/next@0.0.26`.
 
 The trusted-local native opencode lane separately pins the upstream experimental adapter
 `@assistant-ui/react-opencode@0.2.30` and `@opencode-ai/sdk@1.18.35`.
-Root overrides pin `@assistant-ui/core@0.3.33`, `@assistant-ui/store@0.3.23`,
-and `@assistant-ui/tap@0.9.25`; `assistant-stream` is pinned and overridden
-to one shared `0.3.56` version.
+Root overrides pin `@assistant-ui/core@0.3.37`, `@assistant-ui/store@0.3.24`,
+and `@assistant-ui/tap@0.9.26`; `assistant-stream` is pinned and overridden
+to one shared `0.3.58` version.
 The adapter upgrade removed the app's temporary title-request workaround and
 its dedicated tests. Browser evidence for `0.2.30` confirms generated server
 titles match official thread metadata/list-item titles and restore after reload,
 with zero summarize requests or native HTTP 400 responses observed.
 The same-mount recovery failure and prior `0.2.29` evidence are retained in the
 [issue #34 report](spikes/2026-10-opencode-local-boundary-issue-34.md).
-The copied inventory now matches the `0.15.33` release tag after formatting:
+The copied inventory now matches the `0.15.37` release tag after formatting:
 **zero functional Thread patches and zero approved copied-source patches**.
 The release opens default tool groups while a call requires action and adds a
 descriptive model-selector accessible label; it also removes cursor styling in
 the image, media player, model selector and Thread copies.
+Since `0.15.33` the stock copies add stale/in-progress states and Resume/Refresh actions
+to the Thread message error, treat tool results with `isError` as incomplete in the tool
+fallback, and harden file-part and shallow-stable markdown handling. Resume stays hidden
+because no runtime here opts into `canResume`.
 The former `ComposerActionLeft` patch from
 [PR #17](https://github.com/tbrandenburg/agentilogue/pull/17) is replaced by the
 released `ThreadComponents.ComposerExtra` slot from
@@ -61,7 +65,7 @@ Send, Cancel and dictation stay in the separate stock action group.
 The refresh includes stock attachment state, ref-bearing collapsible,
 safe-href, model-selection and isomorphic-effect helpers. Stock Thread also adds
 Resume and image-file rendering; the matching markdown copy needs the stable
-`memoizeMarkdownComponents` export, provided by `@assistant-ui/react-markdown@0.14.24`.
+`memoizeMarkdownComponents` export, provided by `@assistant-ui/react-markdown@0.14.26`.
 
 ## Released source versus live registry
 

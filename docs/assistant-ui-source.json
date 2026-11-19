@@ -2,7 +2,7 @@
   "formatter": "oxfmt@0.68.0",
   "upstream": {
     "repository": "assistant-ui/assistant-ui",
-    "commit": "eb65bd4558b769550093003c95e5867ad0ec8eba"
+    "commit": "8d69ac5074775af0a0ab6745684c6349d75d6a68"
   },
   "files": [
     {
@@ -29,8 +29,8 @@
     {
       "path": "components/assistant-ui/elements/file.tsx",
       "upstreamPath": "packages/ui/src/components/react/assistant-ui/elements/file.tsx",
-      "upstreamBlob": "7b14dc57309f3d03dd43c29e91ae325826d58c2d",
-      "formattedSha256": "82dab74d5b7e34c06d7e858493976301bfdae19ad831363483c127d870104080",
+      "upstreamBlob": "6c8e7a91fbd2c5f7722f507557adc4661f94c437",
+      "formattedSha256": "883ff325d8de25f975e9db9951793232226f4583bd6398bfc949b7dcdc551135",
       "approvedPatches": []
     },
     {
@@ -50,15 +50,15 @@
     {
       "path": "components/assistant-ui/elements/markdown-text.tsx",
       "upstreamPath": "packages/ui/src/components/react/assistant-ui/elements/markdown-text.tsx",
-      "upstreamBlob": "e1d670e1b5bdb2f46167ed3c896711e24aa28950",
-      "formattedSha256": "0d228ef0470df0c8d4fb19403ba096d80981fc146a08a058189939ba110d5d87",
+      "upstreamBlob": "6c2397a0d700eeafaa62e8fd2f396e21ecde3dab",
+      "formattedSha256": "c646e5bbdc89a8e59ea285d61a0871d43c7ecd435729909b50a8f3278f103bf2",
       "approvedPatches": []
     },
     {
       "path": "components/assistant-ui/elements/media-player.tsx",
       "upstreamPath": "packages/ui/src/components/react/assistant-ui/elements/media-player.tsx",
-      "upstreamBlob": "47d9e6f9951ca4ea450e1c372ddef6d549bb8856",
-      "formattedSha256": "07f4ef7310dde9cdd008ff00f6a464ad51a81d4462f84f2f924553e1512ffc98",
+      "upstreamBlob": "f6d551964ce91268922941a6e4ed551eef52f320",
+      "formattedSha256": "ab9941492251b893e5910f7d58efc7c32edbcf971a26842e496d315e03504042",
       "approvedPatches": []
     },
     {
@@ -92,15 +92,15 @@
     {
       "path": "components/assistant-ui/elements/thread.aui.tsx",
       "upstreamPath": "packages/ui/src/components/react/assistant-ui/elements/thread.aui.tsx",
-      "upstreamBlob": "663d1db517cba19dfbbcd5fdc6ee89339f9f3973",
-      "formattedSha256": "14a72c10a3271b226979155d3b484bcac64f1b3d0b9ef36d7a595ed58d322857",
+      "upstreamBlob": "27227d204419992f5aa53bac84335af1f28b98de",
+      "formattedSha256": "e23400a6fdd148985d3a4b219c14353f8b71853ec00ef7eef68edbeb7acd175f",
       "approvedPatches": []
     },
     {
       "path": "components/assistant-ui/elements/tool-fallback.aui.tsx",
       "upstreamPath": "packages/ui/src/components/react/assistant-ui/elements/tool-fallback.aui.tsx",
-      "upstreamBlob": "8635a10e49d7a7b9e7e722efc06a699cc14e897f",
-      "formattedSha256": "43f96620e7eceaf59f0deaac4a65993205d5404175ed988ddfe38180ee9a9c10",
+      "upstreamBlob": "8fbdb910a6f4f1e2bbd470a3956e260c04ee8e57",
+      "formattedSha256": "26bb935560c40383072cd06afdeea048e8a14f11a4846ebabe90fab88c34aceb",
       "approvedPatches": []
     },
     {
