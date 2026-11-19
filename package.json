@@ -28,14 +28,14 @@
   "dependencies": {
     "@agentclientprotocol/sdk": "1.7.0",
     "@ai-sdk/openai": "^4.0.66",
-    "@assistant-ui/ai-sdk": "0.0.11",
-    "@assistant-ui/react": "0.15.33",
-    "@assistant-ui/react-markdown": "0.14.24",
+    "@assistant-ui/ai-sdk": "0.0.19",
+    "@assistant-ui/react": "0.15.37",
+    "@assistant-ui/react-markdown": "0.14.26",
     "@assistant-ui/react-opencode": "0.2.30",
     "@base-ui/react": "^1.9.0",
     "@opencode-ai/sdk": "1.18.35",
     "ai": "^7.0.177",
-    "assistant-stream": "0.3.56",
+    "assistant-stream": "0.3.58",
     "class-variance-authority": "^0.7.1",
     "cmdk": "^1.1.1",
     "cn": "^0.3.0",
@@ -51,7 +51,7 @@
     "zustand": "^5.1.0"
   },
   "devDependencies": {
-    "@assistant-ui/next": "0.0.24",
+    "@assistant-ui/next": "0.0.26",
     "@tailwindcss/postcss": "^4.3.5",
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
@@ -63,10 +63,10 @@
     "typescript": "^7.0.2"
   },
   "overrides": {
-    "@assistant-ui/core": "0.3.33",
-    "@assistant-ui/store": "0.3.23",
-    "@assistant-ui/tap": "0.9.25",
-    "assistant-stream": "0.3.56",
+    "@assistant-ui/core": "0.3.37",
+    "@assistant-ui/store": "0.3.24",
+    "@assistant-ui/tap": "0.9.26",
+    "assistant-stream": "0.3.58",
     "undici": "^7.30.1"
   },
   "engines": {
